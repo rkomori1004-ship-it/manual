@@ -1,0 +1,1299 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>開店・締め作業記録</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#17495f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="作業記録">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="icon" href="./icon-192.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    --sumi: #23272b;
+    --ai: #17495f;
+    --ai-soft: #eaf1f4;
+    --asagi: #2f8f9d;
+    --koke: #47734f;
+    --shu: #a8453a;
+    --ground: #eceff0;
+    --card: #ffffff;
+    --rail: #ccd6da;
+    --muted: #6c797f;
+    --sans: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+    --mincho: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+  }
+  #app {
+    font-family: var(--sans);
+    color: var(--sumi);
+    background: var(--ground);
+    min-height: 100vh;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  #app button, #app select, #app input, #app textarea { font-family: inherit; font-size: 16px; color: inherit; }
+  #app button { cursor: pointer; border: none; background: none; }
+
+  /* ---------- header ---------- */
+  .hdr { background: var(--ai); color: #fff; padding: 14px 18px 0; position: sticky; top: 0; z-index: 20; }
+  .hdr-inner, .foot-inner { max-width: 940px; margin: 0 auto; }
+  .hdr-top { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .hdr-title { font-family: var(--mincho); font-size: 21px; letter-spacing: .14em; font-weight: 600; }
+  .hdr-sub { font-size: 12px; letter-spacing: .18em; opacity: .72; }
+  .hdr-store { margin-left: auto; font-size: 12px; opacity: .72; }
+  .tabs { display: flex; gap: 4px; margin-top: 12px; }
+  .tab { flex: 1; padding: 12px 4px; border-radius: 10px 10px 0 0; background: rgba(255,255,255,.1); color: rgba(255,255,255,.75); font-size: 14px; font-weight: 600; letter-spacing: .06em; }
+  .tab.on { background: var(--ground); color: var(--ai); }
+
+  .wrap { padding: 16px 18px 120px; max-width: 940px; margin: 0 auto; }
+  .panel { display: none; }
+  .panel.on { display: block; }
+
+  /* ---------- controls ---------- */
+  .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .fld { display: flex; flex-direction: column; gap: 4px; }
+  .fld > span { font-size: 11px; letter-spacing: .12em; color: var(--muted); }
+  .inp { background: var(--card); border: 1px solid var(--rail); border-radius: 9px; padding: 11px 12px; min-height: 46px; }
+  select.inp { -webkit-appearance: none; appearance: none; padding-right: 30px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' stroke='%236c797f' stroke-width='1.6' fill='none'/></svg>");
+    background-repeat: no-repeat; background-position: right 11px center; }
+  .seg { display: flex; background: #dde3e5; border-radius: 11px; padding: 3px; }
+  .seg button { padding: 11px 20px; border-radius: 9px; font-size: 15px; font-weight: 600; color: var(--muted); }
+  .seg button.on { background: var(--card); color: var(--ai); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+
+  /* ---------- assignee strip ---------- */
+  .assign { background: var(--card); border-radius: 12px; padding: 12px 14px; display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
+  .assign .fld { flex: 1 1 150px; }
+  .assign .fld > span { display: flex; align-items: center; gap: 6px; }
+
+  /* ---------- progress ---------- */
+  .prog { background: var(--card); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+  .prog-top { display: flex; align-items: baseline; gap: 10px; }
+  .prog-num { font-family: var(--mincho); font-size: 34px; font-weight: 600; line-height: 1; }
+  .prog-lbl { font-size: 13px; color: var(--muted); }
+  .prog-lock { margin-left: auto; font-size: 12px; color: var(--koke); font-weight: 600; }
+  .track { height: 9px; background: #dde3e5; border-radius: 5px; margin-top: 11px; overflow: hidden; }
+  .track > i { display: block; height: 100%; background: var(--asagi); border-radius: 5px; transition: width .3s; }
+
+  /* ---------- timeline rail (signature) ---------- */
+  /* ---------- time slots ---------- */
+  .slot { margin-bottom: 18px; }
+  .slot-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .slot-time { font-family: var(--mincho); font-size: 24px; font-weight: 600; color: var(--ai); letter-spacing: .03em; font-variant-numeric: tabular-nums; }
+  .slot.done .slot-time { color: var(--koke); }
+  .slot-rule { flex: 1; height: 1px; background: var(--rail); }
+  .slot-meta { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .must-tag { font-size: 10.5px; letter-spacing: .12em; background: var(--shu); color: #fff; padding: 3px 8px; border-radius: 4px; font-weight: 700; }
+  .slot.now { background: #fff8e6; border-radius: 12px; padding: 11px 11px 5px; margin-left: -11px; margin-right: -11px; box-shadow: inset 0 0 0 2px #e6c473; }
+  .slot-list { display: flex; flex-direction: column; gap: 7px; }
+
+  .row { background: var(--card); border-radius: 11px; border-left: 4px solid var(--rail); display: flex; align-items: stretch; overflow: hidden; }
+  .row.done { border-left-color: var(--koke); background: #f4f8f4; }
+  .row.cat-フロア { border-left-color: #4a6fa5; }
+  .row.cat-フード { border-left-color: #b07d3a; }
+  .row.cat-ドリンク { border-left-color: #3f8d84; }
+  .row.done.cat-フロア, .row.done.cat-フード, .row.done.cat-ドリンク { border-left-color: var(--koke); }
+  .row-btn { flex: 1; display: flex; gap: 12px; align-items: flex-start; padding: 13px 14px; text-align: left; min-height: 58px; }
+  .box { flex: none; width: 27px; height: 27px; border-radius: 7px; border: 2px solid #b9c4c9; background: #fff; margin-top: 1px; position: relative; }
+  .row.done .box { background: var(--koke); border-color: var(--koke); }
+  .row.done .box::after { content: ""; position: absolute; left: 8px; top: 3px; width: 7px; height: 13px; border: solid #fff; border-width: 0 2.6px 2.6px 0; transform: rotate(43deg); }
+  .row-body { flex: 1; min-width: 0; }
+  .row-title { font-size: 15.5px; font-weight: 500; }
+  .row.done .row-title { color: #4d5a55; }
+  .row-note { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+  .row-stamp { font-size: 12px; color: var(--koke); margin-top: 4px; font-weight: 600; }
+  .chip { display: inline-block; font-size: 10.5px; letter-spacing: .1em; padding: 2px 7px; border-radius: 4px; background: var(--ai-soft); color: var(--ai); margin-right: 6px; vertical-align: 2px; }
+
+  /* ---------- generic cards ---------- */
+  .card { background: var(--card); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+  .card h3 { margin: 0 0 12px; font-size: 14px; letter-spacing: .1em; color: var(--ai); font-weight: 700; }
+  .btn { background: var(--ai); color: #fff; border-radius: 10px; padding: 15px 22px; font-size: 16px; font-weight: 600; letter-spacing: .06em; }
+  .btn.ghost { background: transparent; color: var(--ai); border: 1.5px solid var(--ai); }
+  .btn.sm { padding: 10px 15px; font-size: 14px; }
+  .btn:disabled { opacity: .4; }
+  textarea.inp { width: 100%; min-height: 74px; resize: vertical; }
+
+  /* ---------- history ---------- */
+  .hrow { background: var(--card); border-radius: 11px; margin-bottom: 8px; overflow: hidden; }
+  .hrow-head { width: 100%; display: flex; gap: 12px; align-items: center; padding: 14px 15px; text-align: left; }
+  .hrow-date { font-family: var(--mincho); font-size: 16px; font-weight: 600; min-width: 92px; }
+  .hrow-pct { margin-left: auto; font-family: var(--mincho); font-size: 21px; font-weight: 600; }
+  .hrow-body { padding: 0 15px 14px; border-top: 1px solid #eef1f2; }
+  .hitem { display: flex; gap: 9px; padding: 7px 0; font-size: 13.5px; border-bottom: 1px solid #f2f5f5; }
+  .hitem b { color: var(--koke); font-weight: 600; white-space: nowrap; }
+  .hitem.miss b { color: var(--shu); }
+
+  /* ---------- stats ---------- */
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .kpi { background: var(--card); border-radius: 12px; padding: 14px 16px; }
+  .kpi-v { font-family: var(--mincho); font-size: 30px; font-weight: 600; line-height: 1.15; }
+  .kpi-l { font-size: 11.5px; color: var(--muted); letter-spacing: .08em; margin-top: 3px; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 14px; }
+  table.t th { text-align: left; font-size: 11px; letter-spacing: .1em; color: var(--muted); font-weight: 600; padding: 0 8px 8px 0; border-bottom: 1px solid var(--rail); }
+  table.t td { padding: 11px 8px 11px 0; border-bottom: 1px solid #f0f3f4; vertical-align: middle; }
+  table.t td:last-child, table.t th:last-child { padding-right: 0; text-align: right; }
+  .minibar { height: 7px; background: #e3e8ea; border-radius: 4px; overflow: hidden; margin-top: 5px; }
+  .minibar > i { display: block; height: 100%; background: var(--asagi); }
+  .days { display: flex; align-items: flex-end; gap: 5px; height: 96px; }
+  .day { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; min-width: 0; }
+  .day > i { width: 100%; background: var(--asagi); border-radius: 3px 3px 0 0; min-height: 2px; }
+  .day > span { font-size: 9.5px; color: var(--muted); white-space: nowrap; }
+  .empty { text-align: center; color: var(--muted); padding: 34px 10px; font-size: 14px; }
+
+  /* ---------- settings ---------- */
+  .lrow { display: flex; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid #f0f3f4; }
+  .lrow input.inp { flex: 1; min-height: 44px; }
+  .del { color: var(--shu); font-size: 13px; font-weight: 600; padding: 10px 8px; }
+  .warn { background: #fdf3f1; border-left: 3px solid var(--shu); padding: 11px 13px; border-radius: 7px; font-size: 13px; color: #7d3830; margin-bottom: 12px; }
+
+  /* ---------- sticky action bar ---------- */
+  .footbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    background: rgba(255,255,255,.97); border-top: 1px solid var(--rail);
+    padding: 12px 18px calc(12px + env(safe-area-inset-bottom)); }
+  .foot-inner { display: flex; gap: 14px; align-items: center; }
+  .footbar .sum { line-height: 1.25; }
+  .footbar .sum b { display: block; font-size: 16px; font-weight: 700; }
+  .footbar .sum span { font-size: 12px; color: var(--muted); }
+  .bigbtn { flex: 1; max-width: 330px; margin-left: auto; background: var(--koke); color: #fff;
+    border-radius: 14px; padding: 18px 18px; font-size: 18px; font-weight: 700; letter-spacing: .08em;
+    display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 3px 0 #3a6141; }
+  .bigbtn:active { transform: translateY(2px); box-shadow: 0 1px 0 #3a6141; }
+  .bigbtn.edit { background: #fff; color: var(--ai); border: 2px solid var(--ai); box-shadow: none; }
+  .bigbtn.edit:active { transform: none; }
+  .tick { width: 22px; height: 22px; flex: none; }
+
+  /* ---------- confirm sheet ---------- */
+  .modal { position: fixed; inset: 0; z-index: 60; background: rgba(20,28,32,.55); display: none; align-items: flex-end; justify-content: center; }
+  .modal.on { display: flex; }
+  .sheet { background: #fff; width: 100%; max-width: 540px; border-radius: 20px 20px 0 0;
+    padding: 24px 22px calc(24px + env(safe-area-inset-bottom)); max-height: 88vh; overflow: auto; }
+  .sheet h2 { margin: 0 0 4px; font-family: var(--mincho); font-size: 21px; font-weight: 600; letter-spacing: .06em; }
+  .sheet p.lead { margin: 0 0 16px; font-size: 13.5px; color: var(--muted); }
+  .sum-list { border-top: 1px solid #eef1f2; margin-bottom: 16px; }
+  .sum-list div { display: flex; padding: 11px 0; border-bottom: 1px solid #eef1f2; font-size: 15px; }
+  .sum-list div span { color: var(--muted); font-size: 13px; width: 92px; flex: none; align-self: center; }
+  .sum-list div b { font-weight: 600; }
+  .missbox { background: #fdf3f1; border-radius: 10px; padding: 13px 15px; margin-bottom: 16px; }
+  .missbox h4 { margin: 0 0 8px; font-size: 13px; color: var(--shu); font-weight: 700; }
+  .missbox li { font-size: 13.5px; margin-bottom: 5px; }
+  .missbox ul { margin: 0; padding-left: 18px; }
+  .sheet-btns { display: flex; gap: 10px; }
+  .sheet-btns .bigbtn { max-width: none; margin: 0; }
+  .sheet-btns .cancel { flex: none; width: 110px; border-radius: 14px; border: 1.5px solid var(--rail); color: var(--muted); font-size: 16px; font-weight: 600; }
+
+
+  /* ---------- clock & alarm popup ---------- */
+  .clock { margin-left: auto; font-family: var(--mincho); font-size: 30px; font-weight: 600; letter-spacing: .04em; font-variant-numeric: tabular-nums; line-height: 1; }
+  .bell { color: #fff; background: rgba(255,255,255,.14); border-radius: 20px; padding: 7px 14px; font-size: 12.5px; font-weight: 600; letter-spacing: .04em; }
+  .bell.on { background: #f0c14b; color: #4a3a10; }
+  .hdr-next { margin-top: 9px; font-size: 13px; color: rgba(255,255,255,.9); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-height: 20px; }
+  .hdr-next em { font-style: normal; font-family: var(--mincho); font-size: 17px; font-weight: 600; }
+  .hdr-next .cnt { background: rgba(255,255,255,.18); border-radius: 5px; padding: 2px 8px; font-size: 12px; }
+
+  .alarm { position: fixed; inset: 0; z-index: 90; background: rgba(15,22,26,.78); display: none;
+    align-items: center; justify-content: center; padding: 16px; font-family: var(--sans); color: var(--sumi); }
+  .alarm.on { display: flex; }
+  .alarm-card { background: #fff; border-radius: 20px; width: 100%; max-width: 620px; max-height: 92vh; overflow: auto; border-top: 10px solid var(--shu); }
+  .alarm-hd { padding: 22px 26px 4px; text-align: center; }
+  .alarm-now { font-family: var(--mincho); font-size: 60px; font-weight: 600; line-height: 1; letter-spacing: .03em; font-variant-numeric: tabular-nums; }
+  .alarm-due { display: inline-block; margin-top: 10px; background: var(--shu); color: #fff; border-radius: 6px; padding: 5px 14px; font-size: 14px; font-weight: 700; letter-spacing: .08em; }
+  .alarm-msg { font-family: var(--mincho); font-size: 27px; font-weight: 600; line-height: 1.45; margin-top: 14px; }
+  .alarm-body { padding: 18px 22px 22px; }
+  .alarm-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .abig { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; background: #f5f7f8; border-radius: 12px; padding: 16px 18px; min-height: 66px; border: 2px solid transparent; }
+  .abig.done { background: #eef6ee; border-color: var(--koke); }
+  .abig .box { width: 32px; height: 32px; margin: 0; }
+  .abig .box::after { left: 10px; top: 4px; width: 8px; height: 15px; }
+  .abig span { font-size: 18px; font-weight: 600; }
+  .abig.done span { color: #4d5a55; }
+  .alarm-btns { display: flex; gap: 10px; }
+  .alarm-btns .bigbtn { max-width: none; margin: 0; padding: 20px; font-size: 19px; }
+  .alarm-btns .snooze { flex: none; width: 128px; border-radius: 14px; border: 1.5px solid var(--rail); color: var(--muted); font-size: 15px; font-weight: 600; }
+  .alarm-pick { display: flex; gap: 10px; align-items: center; background: #fdf3f1; border-radius: 10px; padding: 11px 13px; margin-bottom: 14px; font-size: 13.5px; color: #7d3830; }
+  .alarm-pick select { flex: 1; }
+  @keyframes flash { 0%, 100% { border-top-color: var(--shu); } 50% { border-top-color: #f0c14b; } }
+  .alarm.on .alarm-card { animation: flash 1.1s ease-in-out infinite; }
+
+  /* ---------- toast ---------- */
+  #toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(80px); background: var(--sumi); color: #fff; padding: 13px 22px; border-radius: 30px; font-size: 14px; opacity: 0; transition: .25s; pointer-events: none; z-index: 99; }
+  #toast.on { transform: translateX(-50%) translateY(0); opacity: 1; }
+  #report { position: fixed; left: -20000px; top: 0; width: 794px; background: #fff; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div id="app">
+  <div class="hdr">
+    <div class="hdr-inner">
+    <div class="hdr-top">
+      <div class="hdr-title">開店・締め作業記録</div>
+      <button class="bell" id="bellBtn">🔕 音オフ</button>
+      <div class="clock" id="clock">--:--</div>
+    </div>
+    <div class="hdr-next" id="nextUp"></div>
+    <div class="tabs">
+      <button class="tab on" data-tab="check">チェック</button>
+      <button class="tab" data-tab="hist">履歴</button>
+      <button class="tab" data-tab="stat">集計</button>
+      <button class="tab" data-tab="cfg">設定</button>
+    </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <!-- CHECK -->
+    <div class="panel on" id="p-check">
+      <div class="bar">
+        <label class="fld"><span>日付</span><input type="date" class="inp" id="dateSel"></label>
+        <div class="seg" id="phaseSeg">
+          <button data-ph="open" class="on">開店</button>
+          <button data-ph="mid">営業中</button>
+          <button data-ph="close">閉店</button>
+        </div>
+      </div>
+      <div class="assign" id="assignBox"></div>
+      <div class="prog">
+        <div class="prog-top">
+          <span class="prog-num" id="pgNum">0%</span>
+          <span class="prog-lbl" id="pgLbl">0 / 0 項目</span>
+          <span class="prog-lock" id="pgLock"></span>
+        </div>
+        <div class="track"><i id="pgBar" style="width:0%"></i></div>
+      </div>
+      <div id="taskList"></div>
+      <div class="card">
+        <h3>申し送り</h3>
+        <textarea class="inp" id="noteBox" placeholder="できなかった項目の理由、引き継ぎたいことなど"></textarea>
+      </div>
+      <div class="footbar">
+        <div class="foot-inner">
+        <div class="sum"><b id="fbTitle">開店 ・ 0/0</b><span id="fbSub">担当者を選んでください</span></div>
+        <button class="bigbtn" id="finishBtn">
+          <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg>
+          <span id="fbLabel">作業を記録する</span>
+        </button>
+        </div>
+      </div>
+
+      <div class="modal" id="confirm">
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cfTitle">
+          <h2 id="cfTitle">この内容で記録します</h2>
+          <p class="lead" id="cfLead">記録すると履歴と集計に反映されます。あとから修正もできます。</p>
+          <div class="sum-list" id="cfSum"></div>
+          <div id="cfMiss"></div>
+          <div class="sheet-btns">
+            <button class="cancel" id="cfNo">戻る</button>
+            <button class="bigbtn" id="cfYes"><span id="cfYesLabel">記録する</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="panel" id="p-hist">
+      <div class="bar">
+        <label class="fld"><span>表示する月</span><input type="month" class="inp" id="histMonth"></label>
+        <label class="fld"><span>区分</span>
+          <select class="inp" id="histPhase">
+            <option value="">すべて</option><option value="open">開店</option>
+            <option value="mid">営業中</option><option value="close">閉店</option>
+          </select></label>
+      </div>
+      <div id="histList"></div>
+    </div>
+
+    <!-- STATS -->
+    <div class="panel" id="p-stat">
+      <div class="bar">
+        <div class="seg" id="rangeSeg">
+          <button data-rg="week" class="on">週次</button>
+          <button data-rg="month">月次</button>
+        </div>
+        <label class="fld" id="wkFld"><span>週（月曜始まり）</span><input type="week" class="inp" id="weekSel"></label>
+        <label class="fld" id="moFld" style="display:none"><span>月</span><input type="month" class="inp" id="monthSel"></label>
+      </div>
+      <div id="statBody"></div>
+      <div class="bar" style="margin-top:16px">
+        <button class="btn" id="pdfBtn">PDFで保存</button>
+        <button class="btn ghost" id="printBtn">印刷する</button>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="panel" id="p-cfg">
+      <div class="card">
+        <h3>スタッフ</h3>
+        <div id="staffList"></div>
+        <div class="lrow" style="border:0">
+          <input class="inp" id="newStaff" placeholder="名前を入力">
+          <button class="btn sm" id="addStaff">追加</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>作業項目</h3>
+        <div class="bar">
+          <div class="seg" id="cfgSeg">
+            <button data-ph="open" class="on">開店</button>
+            <button data-ph="mid">営業中</button>
+            <button data-ph="close">閉店</button>
+          </div>
+        </div>
+        <div id="taskCfg"></div>
+        <div class="lrow" style="border:0;flex-wrap:wrap">
+          <input class="inp" id="ntTime" placeholder="9:20" style="width:88px">
+          <select class="inp" id="ntCat"><option>フロア</option><option>フード</option><option>ドリンク</option></select>
+          <input class="inp" id="ntTitle" placeholder="作業内容" style="flex:1;min-width:170px">
+          <button class="btn sm" id="addTask">追加</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>アラーム</h3>
+        <div class="bar">
+          <label class="fld"><span>何分前に鳴らすか</span>
+            <select class="inp" id="leadSel">
+              <option value="0">時刻ちょうど</option><option value="3">3分前</option>
+              <option value="5">5分前</option><option value="10">10分前</option><option value="15">15分前</option>
+            </select></label>
+        </div>
+        <div class="row-note" style="margin-bottom:10px">オンにした時刻は「マスト」表示になり、未実施があると全画面でお知らせします。</div>
+        <div class="warn" style="margin-bottom:10px">アラームはこの画面を開いている間だけ鳴ります。画面を消したり別のアプリに切り替えると鳴りません。確実に鳴らしたい時刻は、iPad標準の「時計」アプリでもアラームを設定しておくと安心です（画面オフでも鳴ります）。自動ロックを「しない」にしておくのもおすすめです。</div>
+        <div id="alarmCfg"></div>
+      </div>
+      <div class="card">
+        <h3>データ</h3>
+        <div class="warn">記録はこのiPadの中に保存されます。複数のiPadで使う場合は端末ごとに履歴が分かれます。集計をまとめたいときは「書き出す」で保存したファイルを共有してください。個人情報や暗証番号は入力しないでください。</div>
+        <div class="bar">
+          <button class="btn ghost sm" id="expBtn">記録を書き出す（JSON）</button>
+          <button class="btn ghost sm" id="csvBtn">記録を書き出す（CSV）</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="alarm" id="alarm">
+  <div class="alarm-card">
+    <div class="alarm-hd">
+      <div class="alarm-now" id="alNow">--:--</div>
+      <div class="alarm-due" id="alDue">10:50 まで</div>
+      <div class="alarm-msg" id="alMsg"></div>
+    </div>
+    <div class="alarm-body">
+      <div id="alPick"></div>
+      <div class="alarm-list" id="alList"></div>
+      <div class="alarm-btns">
+        <button class="snooze" id="alSnooze">5分後にもう一度</button>
+        <button class="bigbtn" id="alDone">
+          <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg>
+          <span>完了・閉じる</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+<div id="report"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ============ storage ============ */
+  /* 優先: window.storage（Claude内） → localStorage（PWA・通常のブラウザ） → メモリのみ */
+  var mem = {};
+  var hasStore = typeof window.storage !== "undefined" && window.storage;
+  var hasLS = (function () { try { localStorage.setItem("__t", "1"); localStorage.removeItem("__t"); return true; } catch (e) { return false; } })();
+  async function sGet(k) {
+    if (hasStore) { try { var r = await window.storage.get(k, true); return r ? r.value : null; } catch (e) { return null; } }
+    if (hasLS) { var v = localStorage.getItem(k); return v === null ? null : v; }
+    return mem[k] === undefined ? null : mem[k];
+  }
+  async function sSet(k, v) {
+    if (hasStore) { try { await window.storage.set(k, v, true); } catch (e) { toast("保存できませんでした。通信を確認してください。"); } return; }
+    if (hasLS) { try { localStorage.setItem(k, v); } catch (e) { toast("保存容量がいっぱいです。古い記録を書き出して整理してください。"); } return; }
+    mem[k] = v;
+  }
+
+  /* ============ defaults ============ */
+  var TOILET = "紙は三角折り／ハンドペーパー補充／ゴミ箱・サニタリーボックスを空に";
+  var DEF_TASKS = [
+    ["open","9:20","フロア","開錠する",""],
+    ["open","9:20","フロア","鍵を棚のフックにかける",""],
+    ["open","9:20","フロア","電気スイッチを入れる（キッチン・フロア）",""],
+    ["open","9:20","フロア","空調をつける",""],
+    ["open","9:20","ドリンク","ケトルのプラグをコンセントに挿す",""],
+    ["open","9:30","フード","炊飯器のスイッチを入れる",""],
+    ["open","9:30","フード","炊飯器でお米を炊く",""],
+    ["open","9:30","ドリンク","スチーマーの電源を入れる",""],
+    ["open","9:30","ドリンク","スチーマーに給水する",""],
+    ["open","9:30","ドリンク","ケトルのお湯を沸かす",""],
+    ["open","9:30","ドリンク","茶碗・茶筅をお湯で洗う",""],
+    ["open","9:30","ドリンク","青いタンブラーとマドラーコップに水を入れる",""],
+    ["open","9:30","ドリンク","ピンクダスターを準備する",""],
+    ["open","9:40","フロア","テーブルを拭く",""],
+    ["open","9:40","フロア","椅子をアルコールスプレーし、紙で拭く",""],
+    ["open","9:40","フロア","トイレを掃除する",TOILET],
+    ["open","9:40","フロア","店内に掃除機をかける",""],
+    ["open","9:50","フード","おむすびをつくる",""],
+    ["open","10:30","ドリンク","エスプレッソの品質を確認する",""],
+    ["open","10:40","フロア","商品棚・店頭の照明をつける",""],
+    ["open","10:40","フロア","プロジェクターの電源を入れ、設定を確認する",""],
+    ["open","10:40","フロア","音楽をかける",""],
+    ["open","10:50","フロア","シャッターを開ける",""],
+    ["open","10:50","フロア","A看板を設置する",""],
+    ["open","10:50","フロア","おむすびサンプルを店頭に置く",""],
+    ["open","10:50","フロア","プロジェクター・音楽の設定を確認する",""],
+    ["open","10:50","フロア","看板をOPENにする",""],
+
+    ["mid","随時","フロア","商品棚の天板の埃を拭く",""],
+    ["mid","随時","フロア","店前を掃き掃除する",""],
+    ["mid","毎時","フロア","トイレを掃除する",TOILET],
+    ["mid","毎時","フロア","日報を送る",""],
+    ["mid","15:00","フロア","商品棚・棚の中を整頓する",""],
+    ["mid","15:00","フード","翌々日分のおむすび・豚汁の具材を切り出す",""],
+    ["mid","16:00","フード","翌日分のおむすび準備・豚汁を煮込む",""],
+    ["mid","17:00","フード","翌日分の豚汁を煮込む",""],
+    ["mid","17:30","フード","在庫（資材・飲食）を数える",""],
+    ["mid","19:30","フロア","商品在庫を数える",""],
+
+    ["close","19:30","フード","おむすびの具材を仕込む（続き）",""],
+    ["close","19:30","フード","翌営業日の豚汁5個を冷蔵庫に移す","翌日が店休日の場合は移さない"],
+    ["close","19:30","フード","お米を4合と7合計量する",""],
+    ["close","19:30","フード","翌日が営業日ならお米を洗って浸水する",""],
+    ["close","19:30","フード","内釜にラップをし、4合と7合のカードを載せて冷蔵庫へ",""],
+    ["close","19:30","フード","残ったおむすびをジップロックに包み冷凍庫へ",""],
+    ["close","19:50","フロア","店頭のおむすびサンプルを店内にしまう",""],
+    ["close","20:00","フロア","看板をCLOSEにする",""],
+    ["close","20:00","フロア","A看板を店内にしまう",""],
+    ["close","20:00","フロア","雨の日は傘立てを店内にしまう",""],
+    ["close","20:00","フロア","シャッターを半分閉める",""],
+    ["close","20:00","フロア","商品棚の照明を消す",""],
+    ["close","20:00","フロア","プロジェクターの電源を落とす",""],
+    ["close","20:00","フロア","音楽を止める",""],
+    ["close","20:00","フロア","テーブルを拭く",""],
+    ["close","20:00","フード","炊飯器の電源を落とす",""],
+    ["close","20:00","フード","使用した調理器具を洗う",""],
+    ["close","20:00","ドリンク","抹茶の容器にラップをする",""],
+    ["close","20:00","ドリンク","使用した器具を洗う","青いタンブラー・マドラーコップ・茶碗・茶筅"],
+    ["close","20:00","ドリンク","エスプレッソマシーンを洗浄する","ノズルは外して洗浄ブラシで中まで洗う"],
+    ["close","20:00","ドリンク","ケトル・スチーマーの電源を落とす",""],
+    ["close","20:00","ドリンク","ピンクダスターを洗う・漂白する",""],
+    ["close","20:15","フロア","トイレを掃除する",TOILET],
+    ["close","20:15","フロア","店内に掃除機をかける",""],
+    ["close","20:15","フロア","レジ締めを行う","精算は1日1回まで。誤差が出たら電話"],
+    ["close","20:15","フロア","日報を送る",""],
+    ["close","20:15","フロア","売れた商品・在庫報告を行う","ギフトボックス残5枚で報告"],
+    ["close","20:15","フロア","ゴミ袋を縛り、入口とシャッターの間に置く","土日は回収なし。口を縛るだけ"],
+    ["close","20:15","ドリンク","食品の期限と在庫確認をして報告する",""]
+  ];
+  var PH = { open: "開店", mid: "営業中", close: "閉店" };
+  var CATS = ["フロア", "フード", "ドリンク"];
+
+  function defaultConfig() {
+    var n = 0;
+    return {
+      alarm: { lead: 5, slots: { "10:50": true, "20:00": true } },
+      staff: ["さよみん", "はーふ", "まどか", "ぐっちゃん", "はやみー"].map(function (s, i) { return { id: "s" + (i + 1), name: s }; }),
+      tasks: DEF_TASKS.map(function (t) {
+        n++; return { id: "t" + n, phase: t[0], time: t[1], cat: t[2], title: t[3], note: t[4] };
+      })
+    };
+  }
+
+  /* ============ state ============ */
+  var cfg = null, months = {}, S = {
+    tab: "check", date: today(), phase: "open",
+    range: "week", cfgPhase: "open", openHist: {}
+  };
+
+  function today() { var d = new Date(); return iso(d); }
+  function iso(d) { return d.getFullYear() + "-" + p2(d.getMonth() + 1) + "-" + p2(d.getDate()); }
+  function p2(n) { return (n < 10 ? "0" : "") + n; }
+  function mk(dateStr) { return dateStr.slice(0, 7); }
+  function wd(dateStr) { return ["日","月","火","水","木","金","土"][new Date(dateStr + "T00:00:00").getDay()]; }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]; }); }
+  function toast(m) { var t = document.getElementById("toast"); t.textContent = m; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove("on"); }, 2600); }
+  function staffName(id) { var s = cfg.staff.filter(function (x) { return x.id === id; })[0]; return s ? s.name : "未設定"; }
+  function hm(isoStr) { var d = new Date(isoStr); return p2(d.getHours()) + ":" + p2(d.getMinutes()); }
+
+  async function loadMonth(m) {
+    if (months[m]) return months[m];
+    var raw = await sGet("ops:rec:" + m);
+    var obj = {};
+    if (raw) { try { obj = JSON.parse(raw); } catch (e) { obj = {}; } }
+    months[m] = obj; return obj;
+  }
+  var saveTimer = {};
+  function saveMonth(m) {
+    clearTimeout(saveTimer[m]);
+    saveTimer[m] = setTimeout(function () { sSet("ops:rec:" + m, JSON.stringify(months[m])); }, 400);
+  }
+  function session(dateStr, ph, create) {
+    var m = months[mk(dateStr)]; if (!m) return null;
+    var key = dateStr + "|" + ph;
+    if (!m[key] && create) m[key] = { date: dateStr, phase: ph, assign: {}, checks: {}, note: "", done: null };
+    return m[key] || null;
+  }
+  /* ============ time helpers ============ */
+  function parseHM(s) {
+    var m = /^(\d{1,2})\s*[:：]\s*(\d{2})$/.exec(String(s).trim());
+    return m ? (+m[1]) * 60 + (+m[2]) : null;
+  }
+  function fmtHM(min) { return p2(Math.floor(min / 60)) + ":" + p2(min % 60); }
+  function nowMin() { var d = new Date(); return d.getHours() * 60 + d.getMinutes(); }
+  function isMust(tm) { return !!(cfg.alarm && cfg.alarm.slots && cfg.alarm.slots[tm]); }
+  function currentSlot(slots) {
+    var n = nowMin(), best = null;
+    slots.forEach(function (tm) { var v = parseHM(tm); if (v !== null && v <= n) best = tm; });
+    if (best) return best;
+    for (var i = 0; i < slots.length; i++) if (parseHM(slots[i]) !== null) return slots[i];
+    return null;
+  }
+  /* すべての時刻スロット（時刻として読めるものだけ） */
+  function allSlots() {
+    var seen = {}, out = [];
+    cfg.tasks.forEach(function (t) {
+      var v = parseHM(t.time); if (v === null || seen[t.time]) return;
+      seen[t.time] = 1; out.push({ time: t.time, min: v, phase: t.phase });
+    });
+    out.sort(function (a, b) { return a.min - b.min; });
+    return out;
+  }
+
+  function tasksOf(ph) { return cfg.tasks.filter(function (t) { return t.phase === ph; }); }
+  /* 担当者は1セッション1名。旧データ（区分別）が残っていれば最初の1名を拾う */
+  function whoOf(sess) {
+    if (!sess || !sess.assign) return "";
+    if (sess.assign.all) return sess.assign.all;
+    for (var i = 0; i < CATS.length; i++) if (sess.assign[CATS[i]]) return sess.assign[CATS[i]];
+    return "";
+  }
+
+  /* stats for one session: returns {tot,ok, per:{cat:{tot,ok}}} */
+  function tally(sess) {
+    var list = tasksOf(sess.phase), per = {}, tot = 0, ok = 0;
+    CATS.forEach(function (c) { per[c] = { tot: 0, ok: 0 }; });
+    list.forEach(function (t) {
+      tot++; if (!per[t.cat]) per[t.cat] = { tot: 0, ok: 0 };
+      per[t.cat].tot++;
+      if (sess.checks[t.id]) { ok++; per[t.cat].ok++; }
+    });
+    return { tot: tot, ok: ok, per: per };
+  }
+  function pct(ok, tot) { return tot ? Math.round(ok / tot * 100) : 0; }
+
+  /* ============ render: check ============ */
+  function renderCheck() {
+    var sess = session(S.date, S.phase, false) || { date: S.date, phase: S.phase, assign: {}, checks: {}, note: "", done: null };
+
+    var ab = document.getElementById("assignBox");
+    ab.innerHTML = '<label class="fld" style="flex:1 1 100%"><span>本日の担当者</span><select class="inp" id="assignSel">' +
+      '<option value="">— 選択 —</option>' +
+      cfg.staff.map(function (s) { return '<option value="' + s.id + '"' + (whoOf(sess) === s.id ? " selected" : "") + ">" + esc(s.name) + "</option>"; }).join("") +
+      "</select></label>";
+    document.getElementById("assignSel").onchange = function () {
+      var s = session(S.date, S.phase, true);
+      s.assign.all = this.value;
+      saveMonth(mk(S.date));
+    };
+
+    var st = tally(sess);
+    document.getElementById("pgNum").textContent = pct(st.ok, st.tot) + "%";
+    document.getElementById("pgLbl").textContent = st.ok + " / " + st.tot + " 項目";
+    document.getElementById("pgBar").style.width = pct(st.ok, st.tot) + "%";
+    document.getElementById("pgLock").textContent = sess.done ? "確定済 " + hm(sess.done) : "";
+    document.getElementById("noteBox").value = sess.note || "";
+
+    var left = st.tot - st.ok, who = whoOf(sess);
+    document.getElementById("fbTitle").textContent = PH[S.phase] + " ・ " + st.ok + "/" + st.tot + " 項目";
+    document.getElementById("fbSub").textContent = sess.done ? "記録済み " + hm(sess.done)
+      : !who ? "担当者を選んでください"
+      : left ? "未実施が " + left + " 件あります" : "すべて完了しています";
+    var fb = document.getElementById("finishBtn");
+    fb.classList.toggle("edit", !!sess.done);
+    document.getElementById("fbLabel").textContent = sess.done ? "記録をやり直す" : "作業を記録する";
+
+    var list = tasksOf(S.phase), slots = [], seen = {};
+    list.forEach(function (t) { if (!seen[t.time]) { seen[t.time] = []; slots.push(t.time); } seen[t.time].push(t); });
+
+    document.getElementById("taskList").innerHTML = slots.map(function (tm) {
+      var items = seen[tm], ok = items.filter(function (t) { return sess.checks[t.id]; }).length;
+      var all = ok === items.length, must = isMust(tm);
+      var isNow = S.date === today() && tm === currentSlot(slots);
+      return '<div class="slot' + (all ? " done" : "") + (isNow ? " now" : "") + '">' +
+        '<div class="slot-head"><span class="slot-time">' + esc(tm) + "</span>" +
+        (must ? '<span class="must-tag">マスト</span>' : "") +
+        '<span class="slot-rule"></span>' +
+        '<span class="slot-meta">' + (all ? "完了" : ok + " / " + items.length) + "</span></div>" +
+        '<div class="slot-list">' + items.map(function (t) {
+          var c = sess.checks[t.id];
+          return '<div class="row cat-' + t.cat + (c ? " done" : "") + '"><button class="row-btn" data-id="' + t.id + '">' +
+            '<span class="box"></span><span class="row-body">' +
+            '<span class="chip">' + t.cat + "</span>" +
+            '<span class="row-title">' + esc(t.title) + "</span>" +
+            (t.note ? '<div class="row-note">' + esc(t.note) + "</div>" : "") +
+            (c ? '<div class="row-stamp">' + esc(staffName(c.by)) + " ・ " + hm(c.at) + "</div>" : "") +
+            "</span></button></div>";
+        }).join("") + "</div></div>";
+    }).join("") || '<div class="empty">この区分の作業項目がありません。設定タブから追加できます。</div>';
+
+    Array.prototype.forEach.call(document.querySelectorAll("#taskList .row-btn"), function (b) {
+      b.onclick = function () { toggle(b.dataset.id); };
+    });
+  }
+
+  function toggle(taskId) {
+    var s = session(S.date, S.phase, true);
+    if (s.checks[taskId]) { delete s.checks[taskId]; }
+    else {
+      var by = whoOf(s);
+      if (!by) { toast("本日の担当者を選んでからチェックしてください。"); return; }
+      s.checks[taskId] = { by: by, at: new Date().toISOString() };
+    }
+    saveMonth(mk(S.date));
+    renderCheck();
+  }
+
+  /* ============ render: history ============ */
+  async function renderHist() {
+    var m = document.getElementById("histMonth").value || mk(S.date);
+    await loadMonth(m);
+    var ph = document.getElementById("histPhase").value;
+    var keys = Object.keys(months[m] || {}).filter(function (k) { return !ph || months[m][k].phase === ph; });
+    keys.sort().reverse();
+
+    document.getElementById("histList").innerHTML = keys.map(function (k) {
+      var s = months[m][k], st = tally(s), p = pct(st.ok, st.tot), open = S.openHist[k];
+      var body = "";
+      if (open) {
+        body = '<div class="hrow-body">' +
+          (whoOf(s) ? '<span class="chip">担当 ' + esc(staffName(whoOf(s))) + "</span>" : "") +
+          tasksOf(s.phase).map(function (t) {
+            var c = s.checks[t.id];
+            return '<div class="hitem' + (c ? "" : " miss") + '"><b>' + (c ? hm(c.at) + " " + esc(staffName(c.by)) : "未実施") + "</b><span>" + esc(t.title) + "</span></div>";
+          }).join("") +
+          (s.note ? '<div class="row-note" style="margin-top:10px">申し送り：' + esc(s.note) + "</div>" : "") +
+          "</div>";
+      }
+      return '<div class="hrow"><button class="hrow-head" data-k="' + k + '">' +
+        '<span class="hrow-date">' + s.date.slice(5).replace("-", "/") + "（" + wd(s.date) + "）</span>" +
+        '<span class="chip">' + PH[s.phase] + "</span>" +
+        '<span class="row-note">' + (s.done ? "確定 " + hm(s.done) : "未確定") + (st.tot - st.ok ? " ・未実施" + (st.tot - st.ok) + "件" : "") + "</span>" +
+        '<span class="hrow-pct" style="color:' + (p === 100 ? "var(--koke)" : p >= 80 ? "var(--sumi)" : "var(--shu)") + '">' + p + "%</span>" +
+        "</button>" + body + "</div>";
+    }).join("") || '<div class="empty">この月の記録はまだありません。</div>';
+
+    Array.prototype.forEach.call(document.querySelectorAll(".hrow-head"), function (b) {
+      b.onclick = function () { S.openHist[b.dataset.k] = !S.openHist[b.dataset.k]; renderHist(); };
+    });
+  }
+
+  /* ============ range helpers ============ */
+  function weekRange(v) { // v = "2026-W30"
+    var y = +v.slice(0, 4), w = +v.slice(6);
+    var d = new Date(y, 0, 4);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7) + (w - 1) * 7);
+    var e = new Date(d); e.setDate(e.getDate() + 6);
+    return [iso(d), iso(e)];
+  }
+  function isoWeek(d) {
+    var t = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    t.setDate(t.getDate() + 3 - ((t.getDay() + 6) % 7));
+    var w1 = new Date(t.getFullYear(), 0, 4);
+    var n = 1 + Math.round(((t - w1) / 864e5 - 3 + ((w1.getDay() + 6) % 7)) / 7);
+    return t.getFullYear() + "-W" + p2(n);
+  }
+  function curRange() {
+    if (S.range === "week") return weekRange(document.getElementById("weekSel").value || isoWeek(new Date()));
+    var m = document.getElementById("monthSel").value || mk(S.date);
+    var y = +m.slice(0, 4), mo = +m.slice(5);
+    return [m + "-01", iso(new Date(y, mo, 0))];
+  }
+
+  async function collect(a, b) {
+    var need = {}, d = new Date(a + "T00:00:00"), end = new Date(b + "T00:00:00");
+    while (d <= end) { need[mk(iso(d))] = 1; d.setDate(d.getDate() + 1); }
+    for (var k in need) await loadMonth(k);
+    var out = [];
+    for (var k2 in need) {
+      var mm = months[k2] || {};
+      for (var kk in mm) if (mm[kk].date >= a && mm[kk].date <= b) out.push(mm[kk]);
+    }
+    out.sort(function (x, y) { return x.date < y.date ? -1 : x.date > y.date ? 1 : 0; });
+    return out;
+  }
+
+  function aggregate(sessions) {
+    var tot = 0, ok = 0, byCat = {}, byStaff = {}, byPhase = {}, byDay = {}, missCount = {};
+    CATS.forEach(function (c) { byCat[c] = { tot: 0, ok: 0 }; });
+    sessions.forEach(function (s) {
+      var st = tally(s); tot += st.tot; ok += st.ok;
+      byPhase[s.phase] = byPhase[s.phase] || { tot: 0, ok: 0, n: 0 };
+      byPhase[s.phase].tot += st.tot; byPhase[s.phase].ok += st.ok; byPhase[s.phase].n++;
+      byDay[s.date] = byDay[s.date] || { tot: 0, ok: 0 };
+      byDay[s.date].tot += st.tot; byDay[s.date].ok += st.ok;
+      CATS.forEach(function (c) { if (st.per[c]) { byCat[c].tot += st.per[c].tot; byCat[c].ok += st.per[c].ok; } });
+      var who = whoOf(s);
+      tasksOf(s.phase).forEach(function (t) {
+        if (who) {
+          byStaff[who] = byStaff[who] || { tot: 0, ok: 0, sess: {} };
+          byStaff[who].tot++; byStaff[who].sess[s.date + s.phase] = 1;
+          if (s.checks[t.id]) byStaff[who].ok++;
+        }
+        if (!s.checks[t.id]) missCount[t.id] = (missCount[t.id] || 0) + 1;
+      });
+    });
+    return { n: sessions.length, tot: tot, ok: ok, byCat: byCat, byStaff: byStaff, byPhase: byPhase, byDay: byDay, miss: missCount };
+  }
+
+  async function renderStat() {
+    var r = curRange(), sess = await collect(r[0], r[1]), a = aggregate(sess);
+    var host = document.getElementById("statBody");
+    if (!sess.length) { host.innerHTML = '<div class="empty">この期間の記録はまだありません。</div>'; return; }
+
+    var missTop = Object.keys(a.miss).map(function (id) {
+      var t = cfg.tasks.filter(function (x) { return x.id === id; })[0];
+      return t ? { t: t, n: a.miss[id] } : null;
+    }).filter(Boolean).sort(function (x, y) { return y.n - x.n; }).slice(0, 6);
+
+    var days = Object.keys(a.byDay).sort();
+
+    host.innerHTML =
+      '<div class="kpis">' +
+        kpi(pct(a.ok, a.tot) + "%", "全体の対応率") +
+        kpi(a.n, "記録した回数") +
+        kpi(a.tot - a.ok, "未実施の項目数") +
+        kpi(r[0].slice(5).replace("-", "/") + "〜" + r[1].slice(5).replace("-", "/"), "対象期間") +
+      "</div>" +
+
+      '<div class="card"><h3>担当者ごとの対応率</h3>' + staffTable(a) + "</div>" +
+
+      '<div class="card"><h3>区分ごとの対応率</h3><table class="t"><tbody>' +
+        CATS.map(function (c) {
+          var v = a.byCat[c], p = pct(v.ok, v.tot);
+          return "<tr><td style='width:34%'>" + c + '</td><td><div class="minibar"><i style="width:' + p + '%"></i></div></td>' +
+            "<td style='width:22%'>" + p + "%<span class='row-note' style='display:inline;margin-left:6px'>" + v.ok + "/" + v.tot + "</span></td></tr>";
+        }).join("") + "</tbody></table></div>" +
+
+      '<div class="card"><h3>開店・営業中・閉店の別</h3><table class="t"><tbody>' +
+        ["open", "mid", "close"].map(function (k) {
+          var v = a.byPhase[k]; if (!v) return "";
+          var p = pct(v.ok, v.tot);
+          return "<tr><td style='width:34%'>" + PH[k] + "<div class='row-note'>" + v.n + "回</div></td>" +
+            '<td><div class="minibar"><i style="width:' + p + '%"></i></div></td><td style="width:22%">' + p + "%</td></tr>";
+        }).join("") + "</tbody></table></div>" +
+
+      '<div class="card"><h3>日ごとの推移</h3><div class="days">' +
+        days.map(function (d) {
+          var p = pct(a.byDay[d].ok, a.byDay[d].tot);
+          return '<div class="day"><i style="height:' + Math.max(2, p * 0.62) + 'px;background:' + (p === 100 ? "var(--koke)" : p >= 80 ? "var(--asagi)" : "var(--shu)") + '"></i><span>' + d.slice(8) + "</span></div>";
+        }).join("") + "</div></div>" +
+
+      (missTop.length ? '<div class="card"><h3>抜けやすい項目</h3><table class="t"><tbody>' +
+        missTop.map(function (x) {
+          return "<tr><td><span class='chip'>" + x.t.cat + "</span>" + esc(x.t.title) + "</td><td style='width:70px'>" + x.n + "回</td></tr>";
+        }).join("") + "</tbody></table></div>" : "");
+  }
+  function kpi(v, l) { return '<div class="kpi"><div class="kpi-v" style="font-size:' + (String(v).length > 8 ? "17px" : "30px") + '">' + esc(v) + '</div><div class="kpi-l">' + l + "</div></div>"; }
+  function staffTable(a) {
+    var rows = cfg.staff.map(function (s) { return { s: s, v: a.byStaff[s.id] }; }).filter(function (x) { return x.v; });
+    if (!rows.length) return '<div class="empty">担当者が設定された記録がありません。</div>';
+    rows.sort(function (x, y) { return pct(y.v.ok, y.v.tot) - pct(x.v.ok, x.v.tot); });
+    return '<table class="t"><thead><tr><th>担当者</th><th>担当回数</th><th>対応率</th><th>未実施</th></tr></thead><tbody>' +
+      rows.map(function (x) {
+        var p = pct(x.v.ok, x.v.tot);
+        return "<tr><td>" + esc(x.s.name) + '<div class="minibar" style="max-width:150px"><i style="width:' + p + '%"></i></div></td>' +
+          "<td>" + Object.keys(x.v.sess).length + "回</td><td><b>" + p + "%</b></td><td>" + (x.v.tot - x.v.ok) + "件</td></tr>";
+      }).join("") + "</tbody></table>";
+  }
+
+  /* ============ PDF ============ */
+  function reportHTML(r, sess, a) {
+    var missTop = Object.keys(a.miss).map(function (id) {
+      var t = cfg.tasks.filter(function (x) { return x.id === id; })[0];
+      return t ? { t: t, n: a.miss[id] } : null;
+    }).filter(Boolean).sort(function (x, y) { return y.n - x.n; }).slice(0, 8);
+    var srows = cfg.staff.map(function (s) { return { s: s, v: a.byStaff[s.id] }; }).filter(function (x) { return x.v; })
+      .sort(function (x, y) { return pct(y.v.ok, y.v.tot) - pct(x.v.ok, x.v.tot); });
+
+    var css = "font-family:'Hiragino Sans',sans-serif;color:#23272b;";
+    var th = "text-align:left;font-size:10px;letter-spacing:.08em;color:#6c797f;padding:0 6px 6px 0;border-bottom:1px solid #ccd6da;";
+    var td = "padding:8px 6px 8px 0;border-bottom:1px solid #eef1f2;font-size:12.5px;";
+
+    return '<div style="' + css + 'padding:44px 46px;width:794px;background:#fff">' +
+      '<div style="display:flex;align-items:baseline;border-bottom:2px solid #17495f;padding-bottom:10px">' +
+        "<div style=\"font-family:'Hiragino Mincho ProN',serif;font-size:20px;font-weight:600;letter-spacing:.12em\">開店・締め作業 実施レポート</div>" +
+        '<div style="margin-left:auto;font-size:11px;color:#6c797f">' + (S.range === "week" ? "週次" : "月次") + "　" + r[0] + " 〜 " + r[1] + "</div></div>" +
+
+      '<div style="display:flex;gap:10px;margin:18px 0 22px">' +
+        [[pct(a.ok, a.tot) + "%", "全体の対応率"], [a.n + "回", "記録した回数"], [(a.tot - a.ok) + "件", "未実施の項目数"], [a.tot + "件", "対象項目の延べ数"]]
+        .map(function (k) { return '<div style="flex:1;border:1px solid #ccd6da;border-radius:8px;padding:11px 13px"><div style="font-family:\'Hiragino Mincho ProN\',serif;font-size:24px;font-weight:600">' + k[0] + '</div><div style="font-size:10px;color:#6c797f;margin-top:2px">' + k[1] + "</div></div>"; }).join("") +
+      "</div>" +
+
+      sec("担当者ごとの対応率") +
+      (srows.length ? '<table style="width:100%;border-collapse:collapse"><tr><th style="' + th + '">担当者</th><th style="' + th + '">担当回数</th><th style="' + th + '">対応率</th><th style="' + th + '">未実施</th></tr>' +
+        srows.map(function (x) {
+          var p = pct(x.v.ok, x.v.tot);
+          return "<tr><td style='" + td + "'>" + esc(x.s.name) + "</td><td style='" + td + "'>" + Object.keys(x.v.sess).length + "回</td>" +
+            "<td style='" + td + "'><b>" + p + "%</b>　" + x.v.ok + "/" + x.v.tot + "</td><td style='" + td + "'>" + (x.v.tot - x.v.ok) + "件</td></tr>";
+        }).join("") + "</table>" : "<div style='font-size:12px;color:#6c797f'>担当者が設定された記録がありません。</div>") +
+
+      sec("区分ごとの対応率") +
+      '<table style="width:100%;border-collapse:collapse">' + CATS.map(function (c) {
+        var v = a.byCat[c], p = pct(v.ok, v.tot);
+        return "<tr><td style='" + td + "width:22%'>" + c + "</td><td style='" + td + "'><div style='height:7px;background:#e3e8ea;border-radius:4px'><div style='height:7px;width:" + p + "%;background:#2f8f9d;border-radius:4px'></div></div></td><td style='" + td + "width:20%'>" + p + "%　" + v.ok + "/" + v.tot + "</td></tr>";
+      }).join("") + "</table>" +
+
+      sec("実施記録") +
+      '<table style="width:100%;border-collapse:collapse"><tr><th style="' + th + '">日付</th><th style="' + th + '">区分</th><th style="' + th + '">担当者</th><th style="' + th + '">対応率</th><th style="' + th + '">未実施</th><th style="' + th + '">確定</th></tr>' +
+      sess.map(function (s) {
+        var st = tally(s), p = pct(st.ok, st.tot);
+        return "<tr><td style='" + td + "'>" + s.date.slice(5).replace("-", "/") + "（" + wd(s.date) + "）</td><td style='" + td + "'>" + PH[s.phase] + "</td>" +
+          "<td style='" + td + "'>" + esc(whoOf(s) ? staffName(whoOf(s)) : "—") + "</td>" +
+          "<td style='" + td + "color:" + (p === 100 ? "#47734f" : p >= 80 ? "#23272b" : "#a8453a") + ";font-weight:600'>" + p + "%</td>" +
+          "<td style='" + td + "'>" + (st.tot - st.ok) + "件</td><td style='" + td + "'>" + (s.done ? hm(s.done) : "—") + "</td></tr>";
+      }).join("") + "</table>" +
+
+      (missTop.length ? sec("抜けやすい項目") + '<table style="width:100%;border-collapse:collapse">' +
+        missTop.map(function (x) { return "<tr><td style='" + td + "'>" + x.t.cat + "　" + esc(x.t.title) + "</td><td style='" + td + "width:70px'>" + x.n + "回</td></tr>"; }).join("") + "</table>" : "") +
+
+      (sess.filter(function (s) { return s.note; }).length ? sec("申し送り") +
+        sess.filter(function (s) { return s.note; }).map(function (s) {
+          return "<div style='font-size:12px;padding:6px 0;border-bottom:1px solid #eef1f2'><b>" + s.date.slice(5).replace("-", "/") + " " + PH[s.phase] + "</b>　" + esc(s.note) + "</div>";
+        }).join("") : "") +
+
+      '<div style="margin-top:26px;font-size:9.5px;color:#8a969b">出力日 ' + today() + "　／　musubi 結 開店・締め作業記録</div></div>";
+  }
+  function sec(t) { return '<div style="margin:24px 0 9px;font-size:12px;font-weight:700;letter-spacing:.1em;color:#17495f;border-left:3px solid #17495f;padding-left:8px">' + t + "</div>"; }
+
+  async function buildReport() {
+    var r = curRange(), sess = await collect(r[0], r[1]);
+    if (!sess.length) { toast("この期間の記録がないため、出力できません。"); return null; }
+    var host = document.getElementById("report");
+    host.innerHTML = reportHTML(r, sess, aggregate(sess));
+    return { host: host, name: "作業記録_" + r[0] + "_" + r[1] + ".pdf" };
+  }
+
+  async function makePDF() {
+    var b = await buildReport(); if (!b) return;
+    toast("PDFを作成しています…");
+    try {
+      var canvas = await html2canvas(b.host.firstChild, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+      var jsPDF = window.jspdf.jsPDF;
+      var pdf = new jsPDF("p", "mm", "a4");
+      var pw = 210, ph = 297, iw = pw, ih = canvas.height * pw / canvas.width;
+      var left = ih, pos = 0;
+      pdf.addImage(canvas, "JPEG", 0, 0, iw, ih, undefined, "FAST");
+      left -= ph;
+      while (left > 0) { pos -= ph; pdf.addPage(); pdf.addImage(canvas, "JPEG", 0, pos, iw, ih, undefined, "FAST"); left -= ph; }
+      try { pdf.save(b.name); }
+      catch (e) { window.open(pdf.output("bloburl"), "_blank"); }
+      toast("PDFを保存しました。");
+    } catch (e) {
+      toast("PDFを作成できませんでした。「印刷する」からお試しください。");
+    }
+  }
+  async function doPrint() {
+    var b = await buildReport(); if (!b) return;
+    var w = window.open("", "_blank");
+    if (!w) { toast("印刷画面を開けませんでした。ポップアップを許可してください。"); return; }
+    w.document.write("<!doctype html><meta charset='utf-8'><title>" + b.name + "</title><body style='margin:0'>" + b.host.innerHTML + "</body>");
+    w.document.close();
+    setTimeout(function () { w.focus(); w.print(); }, 400);
+  }
+
+  /* ============ confirm sheet ============ */
+  function closeConfirm() { document.getElementById("confirm").classList.remove("on"); }
+  function openConfirm() {
+    var sess = session(S.date, S.phase, false);
+    if (!sess) { toast("まだ何もチェックされていません。"); return; }
+    var st = tally(sess), who = whoOf(sess), p = pct(st.ok, st.tot);
+    if (!sess.done && !who) { toast("本日の担当者を選んでください。"); return; }
+
+    var undone = tasksOf(sess.phase).filter(function (t) { return !sess.checks[t.id]; });
+
+    document.getElementById("cfTitle").textContent = sess.done ? "記録をやり直しますか？" : "この内容で記録しますか？";
+    document.getElementById("cfLead").textContent = sess.done
+      ? "取り消すと未記録に戻り、集計から外れます。チェック内容はそのまま残ります。"
+      : "記録すると履歴と集計に反映されます。あとから修正もできます。";
+    document.getElementById("cfYesLabel").textContent = sess.done ? "取り消す" : "記録する";
+    document.getElementById("cfYes").classList.toggle("edit", !!sess.done);
+
+    document.getElementById("cfSum").innerHTML =
+      "<div><span>日付</span><b>" + S.date.replace(/-/g, "/") + "（" + wd(S.date) + "）</b></div>" +
+      "<div><span>区分</span><b>" + PH[S.phase] + "</b></div>" +
+      "<div><span>担当者</span><b>" + esc(who ? staffName(who) : "未設定") + "</b></div>" +
+      "<div><span>対応率</span><b style='color:" + (p === 100 ? "var(--koke)" : p >= 80 ? "var(--sumi)" : "var(--shu)") + "'>" + p + "%　" + st.ok + " / " + st.tot + " 項目</b></div>" +
+      (sess.note ? "<div><span>申し送り</span><b style='font-weight:400;font-size:14px'>" + esc(sess.note) + "</b></div>" : "");
+
+    document.getElementById("cfMiss").innerHTML = undone.length
+      ? '<div class="missbox"><h4>未実施 ' + undone.length + " 件</h4><ul>" +
+        undone.slice(0, 12).map(function (t) { return "<li>" + esc(t.time) + "　" + esc(t.title) + "</li>"; }).join("") +
+        (undone.length > 12 ? "<li>ほか " + (undone.length - 12) + " 件</li>" : "") + "</ul></div>"
+      : "";
+
+    document.getElementById("confirm").classList.add("on");
+  }
+
+  /* ============ clock, sound, alarm ============ */
+  var audio = null, soundOn = false, fired = {}, snoozeUntil = {}, ringing = null, ringTimer = null;
+
+  function updateBell() {
+    var b = document.getElementById("bellBtn");
+    b.classList.toggle("on", soundOn);
+    b.textContent = soundOn ? "🔔 音オン" : "🔕 音オフ";
+  }
+  function toggleSound() {
+    if (soundOn) {
+      soundOn = false;
+      updateBell();
+      toast("アラーム音を消しました。画面のPOPはそのまま出ます。");
+      return;
+    }
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state === "suspended") audio.resume();
+      var o = audio.createOscillator(), g = audio.createGain();
+      g.gain.value = 0.0001; o.connect(g); g.connect(audio.destination);
+      o.start(); o.stop(audio.currentTime + 0.02);
+      soundOn = true;
+      beep();
+      toast("アラーム音をオンにしました。");
+    } catch (e) {
+      soundOn = false;
+      toast("この端末では音を鳴らせません。画面のPOPでお知らせします。");
+    }
+    updateBell();
+  }
+  function beep() {
+    if (!soundOn || !audio) return;
+    [0, 0.28, 0.56].forEach(function (d) {
+      var o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime + d;
+      o.frequency.value = 950; o.type = "triangle";
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.32, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+      o.connect(g); g.connect(audio.destination); o.start(t); o.stop(t + 0.22);
+    });
+  }
+
+  function tick() {
+    var d = new Date(), t = p2(d.getHours()) + ":" + p2(d.getMinutes());
+    document.getElementById("clock").textContent = t;
+    document.getElementById("alNow").textContent = t;
+    renderNextUp();
+    checkAlarm();
+  }
+
+  function slotStatus(sl) {
+    var s = session(today(), sl.phase, false);
+    var items = cfg.tasks.filter(function (t) { return t.phase === sl.phase && t.time === sl.time; });
+    var left = items.filter(function (t) { return !(s && s.checks[t.id]); });
+    return { items: items, left: left, sess: s };
+  }
+
+  function renderNextUp() {
+    var host = document.getElementById("nextUp");
+    if (S.date !== today()) { host.innerHTML = "<span>過去の日付を表示しています</span>"; return; }
+    var n = nowMin(), next = null;
+    allSlots().forEach(function (sl) {
+      if (next || sl.min < n) return;
+      if (slotStatus(sl).left.length) next = sl;
+    });
+    if (!next) { host.innerHTML = "<span>本日の予定時刻の作業はすべて完了しています</span>"; return; }
+    var st = slotStatus(next), mins = next.min - n;
+    host.innerHTML = "<span>次</span><em>" + esc(next.time) + "</em>" +
+      "<span>" + esc(st.left[0].title) + (st.left.length > 1 ? " ほか" + (st.left.length - 1) + "件" : "") + "</span>" +
+      '<span class="cnt">あと' + mins + "分</span>" +
+      (isMust(next.time) ? '<span class="must-tag">マスト</span>' : "");
+  }
+
+  function checkAlarm() {
+    if (ringing) return;
+    var n = nowMin(), lead = (cfg.alarm && cfg.alarm.lead) || 0, day = today();
+    allSlots().forEach(function (sl) {
+      if (!isMust(sl.time)) return;
+      var st = slotStatus(sl);
+      if (!st.left.length) return;
+      [sl.min - lead, sl.min].forEach(function (at) {
+        var key = day + "|" + sl.time + "|" + at;
+        if (snoozeUntil[key] && n < snoozeUntil[key]) return;
+        if (fired[key] && !(snoozeUntil[key] && n >= snoozeUntil[key])) return;
+        if (n >= at && n <= at + 1) { delete snoozeUntil[key]; fired[key] = 1; ring(sl, at, key); }
+      });
+    });
+  }
+
+  function ring(sl, at, key) {
+    ringing = { sl: sl, key: key };
+    S.date = today(); S.phase = sl.phase;
+    document.getElementById("dateSel").value = S.date;
+    Array.prototype.forEach.call(document.querySelectorAll("#phaseSeg button"), function (x) { x.classList.toggle("on", x.dataset.ph === S.phase); });
+    document.getElementById("alDue").textContent = sl.time + " までに";
+    document.getElementById("alarm").classList.add("on");
+    renderAlarm();
+    beep();
+    clearInterval(ringTimer);
+    ringTimer = setInterval(beep, 4000);
+  }
+
+  function renderAlarm() {
+    if (!ringing) return;
+    var sl = ringing.sl, sess = session(today(), sl.phase, false) || { checks: {}, assign: {} };
+    var items = cfg.tasks.filter(function (t) { return t.phase === sl.phase && t.time === sl.time; });
+    var left = items.filter(function (t) { return !sess.checks[t.id]; });
+
+    document.getElementById("alMsg").innerHTML = left.length
+      ? esc(left.map(function (t) { return t.title; }).join("、")) + "！"
+      : "全部おわりました！";
+
+    var who = whoOf(sess);
+    document.getElementById("alPick").innerHTML = who ? "" :
+      '<div class="alarm-pick"><span>担当者</span><select class="inp" id="alWho"><option value="">— 選択 —</option>' +
+      cfg.staff.map(function (s) { return '<option value="' + s.id + '">' + esc(s.name) + "</option>"; }).join("") + "</select></div>";
+    if (!who) document.getElementById("alWho").onchange = function () {
+      var s = session(today(), sl.phase, true); s.assign.all = this.value; saveMonth(mk(today())); renderAlarm(); renderCheck();
+    };
+
+    document.getElementById("alList").innerHTML = items.map(function (t) {
+      return '<button class="abig' + (sess.checks[t.id] ? " done" : "") + '" data-aid="' + t.id + '"><span class="box"></span><span>' + esc(t.title) + "</span></button>";
+    }).join("");
+    Array.prototype.forEach.call(document.querySelectorAll("[data-aid]"), function (b) {
+      b.onclick = function () {
+        var saved = S.phase; S.phase = sl.phase;
+        toggle(b.dataset.aid);
+        S.phase = saved;
+        renderAlarm();
+      };
+    });
+  }
+
+  function stopRing(snoozeMin) {
+    if (!ringing) return;
+    clearInterval(ringTimer);
+    if (snoozeMin) snoozeUntil[ringing.key] = nowMin() + snoozeMin;
+    document.getElementById("alarm").classList.remove("on");
+    ringing = null;
+    renderCheck(); renderNextUp();
+  }
+
+  /* ============ settings ============ */
+  function renderCfg() {
+    document.getElementById("staffList").innerHTML = cfg.staff.map(function (s) {
+      return '<div class="lrow"><input class="inp" value="' + esc(s.name) + '" data-sid="' + s.id + '"><button class="del" data-del="' + s.id + '">削除</button></div>';
+    }).join("");
+    Array.prototype.forEach.call(document.querySelectorAll("[data-sid]"), function (i) {
+      i.onchange = function () {
+        cfg.staff.forEach(function (s) { if (s.id === i.dataset.sid) s.name = i.value.trim() || s.name; });
+        saveCfg(); renderCheck();
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-del]"), function (b) {
+      b.onclick = function () {
+        if (!confirm("このスタッフを一覧から削除します。過去の記録に残った名前はそのままです。")) return;
+        cfg.staff = cfg.staff.filter(function (s) { return s.id !== b.dataset.del; });
+        saveCfg(); renderCfg(); renderCheck();
+      };
+    });
+
+    document.getElementById("taskCfg").innerHTML = tasksOf(S.cfgPhase).map(function (t) {
+      return '<div class="lrow"><input class="inp" style="width:82px;flex:none" value="' + esc(t.time) + '" data-tt="' + t.id + '">' +
+        '<span class="chip">' + t.cat + "</span>" +
+        '<input class="inp" value="' + esc(t.title) + '" data-tn="' + t.id + '">' +
+        '<button class="del" data-td="' + t.id + '">削除</button></div>';
+    }).join("") || '<div class="empty">項目がありません。</div>';
+    Array.prototype.forEach.call(document.querySelectorAll("[data-tt],[data-tn]"), function (i) {
+      i.onchange = function () {
+        var id = i.dataset.tt || i.dataset.tn;
+        cfg.tasks.forEach(function (t) {
+          if (t.id !== id) return;
+          if (i.dataset.tt) t.time = i.value.trim() || t.time; else t.title = i.value.trim() || t.title;
+        });
+        saveCfg(); renderCheck();
+      };
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-td]"), function (b) {
+      b.onclick = function () {
+        if (!confirm("この項目を削除します。今後のチェック対象から外れます。")) return;
+        cfg.tasks = cfg.tasks.filter(function (t) { return t.id !== b.dataset.td; });
+        saveCfg(); renderCfg(); renderCheck();
+      };
+    });
+  }
+  function saveCfg() { sSet("ops:config:v1", JSON.stringify(cfg)); }
+
+  function renderAlarmCfg() {
+    document.getElementById("leadSel").value = String((cfg.alarm && cfg.alarm.lead) || 0);
+    document.getElementById("leadSel").onchange = function () { cfg.alarm.lead = +this.value; saveCfg(); toast("アラームは" + (+this.value ? this.value + "分前" : "時刻ちょうど") + "に鳴ります。"); };
+    document.getElementById("alarmCfg").innerHTML = allSlots().map(function (sl) {
+      var on = isMust(sl.time);
+      var titles = cfg.tasks.filter(function (t) { return t.phase === sl.phase && t.time === sl.time; }).map(function (t) { return t.title; });
+      return '<div class="lrow"><span class="slot-time" style="font-size:19px;width:64px">' + esc(sl.time) + "</span>" +
+        '<span style="flex:1;min-width:0"><span class="chip">' + PH[sl.phase] + '</span><span class="row-note" style="display:inline">' + esc(titles.join("、").slice(0, 40)) + (titles.join("、").length > 40 ? "…" : "") + "</span></span>" +
+        '<button class="btn sm ' + (on ? "" : "ghost") + '" data-al="' + esc(sl.time) + '" style="width:74px;padding:9px 0;text-align:center">' + (on ? "オン" : "オフ") + "</button></div>";
+    }).join("");
+    Array.prototype.forEach.call(document.querySelectorAll("[data-al]"), function (b) {
+      b.onclick = function () {
+        var t = b.dataset.al;
+        if (cfg.alarm.slots[t]) delete cfg.alarm.slots[t]; else cfg.alarm.slots[t] = true;
+        saveCfg(); renderAlarmCfg(); renderCheck(); renderNextUp();
+      };
+    });
+  }
+
+  function exportJSON() {
+    var out = { config: cfg, records: months };
+    dl("作業記録.json", JSON.stringify(out, null, 2), "application/json");
+  }
+  function exportCSV() {
+    var rows = [["日付", "曜日", "区分", "時刻", "担当区分", "作業内容", "実施", "実施者", "実施時刻"]];
+    Object.keys(months).sort().forEach(function (m) {
+      var mm = months[m];
+      Object.keys(mm).sort().forEach(function (k) {
+        var s = mm[k];
+        tasksOf(s.phase).forEach(function (t) {
+          var c = s.checks[t.id];
+          rows.push([s.date, wd(s.date), PH[s.phase], t.time, t.cat, t.title, c ? "済" : "未", c ? staffName(c.by) : "", c ? hm(c.at) : ""]);
+        });
+      });
+    });
+    var csv = "\uFEFF" + rows.map(function (r) { return r.map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(","); }).join("\r\n");
+    dl("作業記録.csv", csv, "text/csv");
+  }
+  function dl(name, text, type) {
+    try {
+      var b = new Blob([text], { type: type }), u = URL.createObjectURL(b);
+      var a = document.createElement("a"); a.href = u; a.download = name; document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(u); a.remove(); }, 1500);
+      toast("書き出しました。");
+    } catch (e) { toast("書き出せませんでした。"); }
+  }
+
+  /* ============ wiring ============ */
+  function go(tab) {
+    S.tab = tab;
+    Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) { t.classList.toggle("on", t.dataset.tab === tab); });
+    Array.prototype.forEach.call(document.querySelectorAll(".panel"), function (p) { p.classList.toggle("on", p.id === "p-" + tab); });
+    if (tab === "hist") renderHist();
+    if (tab === "stat") renderStat();
+    if (tab === "cfg") { renderCfg(); renderAlarmCfg(); }
+    window.scrollTo(0, 0);
+  }
+
+  async function boot() {
+    var raw = await sGet("ops:config:v1");
+    if (raw) { try { cfg = JSON.parse(raw); } catch (e) { cfg = null; } }
+    if (!cfg || !cfg.tasks || !cfg.tasks.length) { cfg = defaultConfig(); await sSet("ops:config:v1", JSON.stringify(cfg)); }
+    if (!cfg.alarm) { cfg.alarm = { lead: 5, slots: { "10:50": true, "20:00": true } }; await sSet("ops:config:v1", JSON.stringify(cfg)); }
+    if (!cfg.alarm.slots) cfg.alarm.slots = {};
+    if (!hasStore && !hasLS) toast("この端末では記録が保存されません。通常のブラウザで開き直してください。");
+
+    document.getElementById("dateSel").value = S.date;
+    document.getElementById("histMonth").value = mk(S.date);
+    document.getElementById("monthSel").value = mk(S.date);
+    document.getElementById("weekSel").value = isoWeek(new Date());
+
+    await loadMonth(mk(S.date));
+    renderCheck();
+
+    Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) { t.onclick = function () { go(t.dataset.tab); }; });
+
+    document.getElementById("dateSel").onchange = async function () {
+      S.date = this.value || today(); await loadMonth(mk(S.date)); renderCheck();
+    };
+    Array.prototype.forEach.call(document.querySelectorAll("#phaseSeg button"), function (b) {
+      b.onclick = function () {
+        S.phase = b.dataset.ph;
+        Array.prototype.forEach.call(document.querySelectorAll("#phaseSeg button"), function (x) { x.classList.toggle("on", x === b); });
+        renderCheck();
+      };
+    });
+    document.getElementById("noteBox").onchange = function () {
+      var s = session(S.date, S.phase, true); s.note = this.value; saveMonth(mk(S.date));
+    };
+    document.getElementById("finishBtn").onclick = openConfirm;
+    document.getElementById("cfNo").onclick = closeConfirm;
+    document.getElementById("confirm").onclick = function (e) { if (e.target === this) closeConfirm(); };
+    document.getElementById("cfYes").onclick = function () {
+      var s = session(S.date, S.phase, true);
+      if (s.done) { s.done = null; toast("記録を取り消しました。続けて編集できます。"); }
+      else {
+        var st = tally(s);
+        s.done = new Date().toISOString();
+        toast("記録しました（対応率 " + pct(st.ok, st.tot) + "%）");
+      }
+      saveMonth(mk(S.date)); closeConfirm(); renderCheck();
+    };
+
+    document.getElementById("histMonth").onchange = renderHist;
+    document.getElementById("histPhase").onchange = renderHist;
+
+    Array.prototype.forEach.call(document.querySelectorAll("#rangeSeg button"), function (b) {
+      b.onclick = function () {
+        S.range = b.dataset.rg;
+        Array.prototype.forEach.call(document.querySelectorAll("#rangeSeg button"), function (x) { x.classList.toggle("on", x === b); });
+        document.getElementById("wkFld").style.display = S.range === "week" ? "" : "none";
+        document.getElementById("moFld").style.display = S.range === "month" ? "" : "none";
+        renderStat();
+      };
+    });
+    document.getElementById("weekSel").onchange = renderStat;
+    document.getElementById("monthSel").onchange = renderStat;
+    document.getElementById("pdfBtn").onclick = makePDF;
+    document.getElementById("printBtn").onclick = doPrint;
+
+    Array.prototype.forEach.call(document.querySelectorAll("#cfgSeg button"), function (b) {
+      b.onclick = function () {
+        S.cfgPhase = b.dataset.ph;
+        Array.prototype.forEach.call(document.querySelectorAll("#cfgSeg button"), function (x) { x.classList.toggle("on", x === b); });
+        renderCfg();
+      };
+    });
+    document.getElementById("addStaff").onclick = function () {
+      var v = document.getElementById("newStaff").value.trim(); if (!v) return;
+      cfg.staff.push({ id: "s" + Date.now(), name: v });
+      document.getElementById("newStaff").value = "";
+      saveCfg(); renderCfg(); renderCheck();
+    };
+    document.getElementById("addTask").onclick = function () {
+      var tm = document.getElementById("ntTime").value.trim(), ti = document.getElementById("ntTitle").value.trim();
+      if (!tm || !ti) { toast("時刻と作業内容の両方を入力してください。"); return; }
+      cfg.tasks.push({ id: "t" + Date.now(), phase: S.cfgPhase, time: tm, cat: document.getElementById("ntCat").value, title: ti, note: "" });
+      document.getElementById("ntTitle").value = "";
+      saveCfg(); renderCfg(); renderCheck();
+    };
+    document.getElementById("expBtn").onclick = exportJSON;
+    document.getElementById("csvBtn").onclick = exportCSV;
+
+    document.getElementById("bellBtn").onclick = toggleSound;
+    document.getElementById("alDone").onclick = function () {
+      var sl = ringing && ringing.sl;
+      stopRing(0);
+      if (sl) {
+        var st = slotStatus(sl);
+        toast(st.left.length ? sl.time + " の作業が " + st.left.length + " 件残っています。" : sl.time + " の作業、完了しました。");
+      }
+    };
+    document.getElementById("alSnooze").onclick = function () { stopRing(5); toast("5分後にもう一度お知らせします。"); };
+
+    tick();
+    setInterval(tick, 10000);
+    setInterval(function () {
+      var d = new Date();
+      document.getElementById("clock").textContent = p2(d.getHours()) + ":" + p2(d.getMinutes());
+    }, 1000);
+  }
+
+  boot();
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("./sw.js").catch(function () {});
+    });
+  }
+})();
+</script>
