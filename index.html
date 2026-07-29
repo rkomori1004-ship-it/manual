@@ -716,12 +716,25 @@
     return d[phase] || [];
   }
 
+  // 名前を正規化（表記ゆれを吸収）
+  function normName(n) {
+    return String(n)
+      .trim()
+      .replace(/ー/g, "ー")      // 全角長音符を統一
+      .replace(/－/g, "ー")      // 全角ハイフンも統一
+      .replace(/\u30FC/g, "ー")  // カタカナ長音符
+      .replace(/\uFF70/g, "ー")  // 半角長音符
+      .replace(/ぺ/g, "ぺ").replace(/ペ/g, "ペ")  // 濁点統一
+      .toLowerCase();
+  }
+
   // 現在時刻のシフト担当者IDを返す（スタッフリストと照合）
   function getShiftStaffId(dateStr, phase) {
     var names = getShiftNames(dateStr, phase);
     for (var i = 0; i < names.length; i++) {
+      var nNorm = normName(names[i]);
       for (var j = 0; j < cfg.staff.length; j++) {
-        if (cfg.staff[j].name === names[i]) return cfg.staff[j].id;
+        if (normName(cfg.staff[j].name) === nNorm) return cfg.staff[j].id;
       }
     }
     return null;
@@ -820,6 +833,20 @@
 
     // シフトから現在時刻に合った担当者を自動セット
     var shiftId = getShiftStaffId(S.date, S.phase);
+    // デバッグ：シフト名とスタッフ名の照合状況をコンソールに出す
+    if (S.date === today()) {
+      var dbgNames = getShiftNames(S.date, S.phase);
+      var dbgStaff = cfg.staff.map(function(st){ return st.name; });
+      console.log("[シフト照合] シフト名:", dbgNames, "スタッフ:", dbgStaff, "マッチしたID:", shiftId);
+      if (dbgNames.length && !shiftId) {
+        console.log("[シフト照合] 正規化比較:");
+        dbgNames.forEach(function(n) {
+          dbgStaff.forEach(function(s) {
+            console.log(" ", JSON.stringify(n), "→", normName(n), " vs ", JSON.stringify(s), "→", normName(s), " 一致:", normName(n)===normName(s));
+          });
+        });
+      }
+    }
     if (shiftId && shiftId !== who) {
       // 手動で変更済みの場合は上書きしない（手動変更フラグを確認）
       var s0 = session(S.date, S.phase, false);
