@@ -220,6 +220,27 @@
   @keyframes flash { 0%, 100% { border-top-color: var(--shu); } 50% { border-top-color: #f0c14b; } }
   .alarm.on .alarm-card { animation: flash 1.1s ease-in-out infinite; }
 
+  /* ---------- how-to ---------- */
+  .help-lead { font-size: 14px; color: var(--muted); margin: 0 0 14px; }
+  .step { display: flex; gap: 13px; padding: 11px 0; border-bottom: 1px solid #f0f3f4; }
+  .step:last-child { border-bottom: 0; }
+  .step-n { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--ai); color: #fff; font-size: 14px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+  .step-b { flex: 1; }
+  .step-b b { font-size: 15.5px; font-weight: 600; }
+  .step-b p { margin: 3px 0 0; font-size: 13.5px; color: #566067; line-height: 1.55; }
+  .step-b .tag { display: inline-block; font-size: 11px; letter-spacing: .06em; background: var(--ai-soft); color: var(--ai); padding: 2px 8px; border-radius: 5px; margin: 0 2px; }
+  .qa { padding: 10px 0; border-bottom: 1px solid #f0f3f4; }
+  .qa:last-child { border-bottom: 0; }
+  .qa b { font-size: 14.5px; }
+  .qa p { margin: 4px 0 0; font-size: 13.5px; color: #566067; line-height: 1.55; }
+  .step-n.t { width: auto; min-width: 52px; padding: 0 9px; height: 26px; border-radius: 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .step-n.ph { background: var(--asagi); }
+  .step.alarm { background: #fff8e6; border-radius: 10px; padding: 11px 12px; border-bottom: 0; margin: 4px 0; box-shadow: inset 0 0 0 1.5px #e6c473; }
+  .step.alarm .step-n.t { background: var(--shu); }
+  .step.report { background: #eef6ee; border-radius: 10px; padding: 11px 12px; border-bottom: 0; margin: 4px 0; box-shadow: inset 0 0 0 1.5px #9cc4a2; }
+  .step.report .step-n.t { background: var(--koke); }
+  .phase-cap { font-family: var(--mincho); font-size: 15px; font-weight: 600; color: var(--ai); margin: 4px 0 6px; letter-spacing: .04em; }
+
   /* ---------- toast ---------- */
   #toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(80px); background: var(--sumi); color: #fff; padding: 13px 22px; border-radius: 30px; font-size: 14px; opacity: 0; transition: .25s; pointer-events: none; z-index: 99; }
   #toast.on { transform: translateX(-50%) translateY(0); opacity: 1; }
@@ -241,6 +262,7 @@
       <button class="tab" data-tab="hist">履歴</button>
       <button class="tab" data-tab="stat">集計</button>
       <button class="tab" data-tab="cfg">設定</button>
+      <button class="tab" data-tab="help">使い方</button>
     </div>
     </div>
   </div>
@@ -371,6 +393,89 @@
           <button class="btn ghost sm" id="expBtn">記録を書き出す（JSON）</button>
           <button class="btn ghost sm" id="csvBtn">記録を書き出す（CSV）</button>
         </div>
+      </div>
+    </div>
+
+    <!-- HOW TO -->
+    <div class="panel" id="p-help">
+      <div class="card">
+        <h3>まず最初に</h3>
+        <p class="help-lead">開店時に一度だけ、音を出せるようにします。</p>
+        <div class="step"><span class="step-n">1</span><span class="step-b"><b>右上の「🔕 音オフ」を1回タップ</b><p>「🔔 音オン」に変わればOK。小さくテスト音が鳴ります。iPadは一度タッチしないと音を出せないので、開店のたびに押してください。タップするたびにオン／オフを切り替えられます。</p></span></div>
+      </div>
+
+      <div class="card">
+        <h3>1日の記録の流れ</h3>
+        <div class="step"><span class="step-n">1</span><span class="step-b"><b>区分をえらぶ</b><p>画面上の<span class="tag">開店</span><span class="tag">営業中</span><span class="tag">閉店</span>から、今の時間帯を選びます。日付は自動で今日です。</p></span></div>
+        <div class="step"><span class="step-n">2</span><span class="step-b"><b>本日の担当者をえらぶ</b><p>「本日の担当者」のプルダウンから自分を選びます。選ばないと項目にチェックできません（誰がやったか残すためです）。</p></span></div>
+        <div class="step"><span class="step-n">3</span><span class="step-b"><b>終わった作業をタップ</b><p>作業を終えるたびにその項目をタップ。担当者の名前と時刻が自動で記録されます。押し間違えたら、もう一度タップで取り消せます。</p></span></div>
+        <div class="step"><span class="step-n">4</span><span class="step-b"><b>最後に「作業を記録する」</b><p>画面いちばん下の緑のボタンを押すと、確認画面が出ます。内容を見て「記録する」。未実施があれば赤で一覧が出るので、確認してから記録できます。</p></span></div>
+      </div>
+
+      <div class="card">
+        <h3>1日の流れ（開店〜報告完了）</h3>
+        <p class="help-lead">この順に進めれば、記録もれなく1日を終えられます。各区分の作業が終わったら、下の緑ボタンで「作業を記録する」を忘れずに。</p>
+
+        <div class="phase-cap">開店（9:20〜10:50）</div>
+        <div class="step"><span class="step-n t ph">9:20</span><span class="step-b"><b>開店の準備をはじめる</b><p>チェック画面を<span class="tag">開店</span>にして担当者を選ぶ。開錠・電気・空調・ケトルのプラグ。</p></span></div>
+        <div class="step"><span class="step-n t ph">9:30</span><span class="step-b"><b>炊飯・ドリンク準備</b><p>お米を炊く。スチーマー給水、ケトルで湯、茶碗・茶筅を洗う、タンブラーに水、ピンクダスター準備。</p></span></div>
+        <div class="step"><span class="step-n t ph">9:40</span><span class="step-b"><b>清掃</b><p>テーブル・椅子を拭く、トイレ掃除、掃除機。</p></span></div>
+        <div class="step"><span class="step-n t ph">9:50</span><span class="step-b"><b>おむすびをつくる</b></span></div>
+        <div class="step"><span class="step-n t ph">10:30</span><span class="step-b"><b>エスプレッソの品質を確認</b></span></div>
+        <div class="step"><span class="step-n t ph">10:40</span><span class="step-b"><b>照明・プロジェクター・音楽</b></span></div>
+        <div class="step alarm"><span class="step-n t">10:50</span><span class="step-b"><b>🔔 開店作業（アラームが鳴ります）</b><p>シャッターを開ける・A看板・おむすびサンプル・看板をOPEN。ここは全画面アラームでお知らせします。</p></span></div>
+        <div class="step"><span class="step-n">✓</span><span class="step-b"><b>開店を記録する</b><p>開店作業が終わったら緑ボタン →「記録する」。</p></span></div>
+
+        <div class="phase-cap">営業中（11:00〜20:00）</div>
+        <div class="step"><span class="step-n">切</span><span class="step-b"><b>「営業中」に切り替え、担当者を選ぶ</b></span></div>
+        <div class="step"><span class="step-n t ph">随時</span><span class="step-b"><b>商品棚の天板の埃・店前の掃き掃除</b></span></div>
+        <div class="step"><span class="step-n t ph">毎時</span><span class="step-b"><b>トイレ掃除・日報を送る</b></span></div>
+        <div class="step"><span class="step-n t ph">15:00</span><span class="step-b"><b>商品棚の整頓／翌々日分の具材切り出し</b></span></div>
+        <div class="step"><span class="step-n t ph">16:00</span><span class="step-b"><b>翌日分のおむすび準備・豚汁を煮込む</b></span></div>
+        <div class="step"><span class="step-n t ph">17:00</span><span class="step-b"><b>豚汁を煮込む</b></span></div>
+        <div class="step"><span class="step-n t ph">17:30</span><span class="step-b"><b>在庫（資材・飲食）を数える</b></span></div>
+        <div class="step"><span class="step-n t ph">19:30</span><span class="step-b"><b>商品在庫を数える</b></span></div>
+
+        <div class="phase-cap">閉店（19:30〜20:15）</div>
+        <div class="step"><span class="step-n">切</span><span class="step-b"><b>「閉店」に切り替え、担当者を選ぶ</b></span></div>
+        <div class="step"><span class="step-n t ph">19:30</span><span class="step-b"><b>フードの翌日準備</b><p>具材仕込み・豚汁5個を冷蔵・お米計量と浸水・冷凍。</p></span></div>
+        <div class="step"><span class="step-n t ph">19:50</span><span class="step-b"><b>店頭のサンプルを店内にしまう</b></span></div>
+        <div class="step alarm"><span class="step-n t">20:00</span><span class="step-b"><b>🔔 閉店作業（アラームが鳴ります）</b><p>看板CLOSE・A看板しまう・シャッター半分・消灯・音楽停止・器具洗い・エスプレッソ洗浄。ここも全画面アラームでお知らせします。</p></span></div>
+        <div class="step report"><span class="step-n t">20:15</span><span class="step-b"><b>報告して1日を終える</b><p>この順で報告まで完了させます：<br>① レジ締めを行う<br>② 日報を送る<br>③ 売れた商品・在庫を報告（ギフトボックス残5枚で報告）<br>④ 食品の期限と在庫を確認して報告<br>⑤ ゴミ袋を縛って所定の位置へ</p></span></div>
+        <div class="step"><span class="step-n">✓</span><span class="step-b"><b>閉店を記録して完了</b><p>すべての報告が終わったら緑ボタン →「記録する」。これで1日の記録が残ります。おつかれさまでした。</p></span></div>
+      </div>
+
+      <div class="card">
+        <h3>アラームが鳴ったら</h3>
+        <p class="help-lead">看板出し・シャッターなど大事な時刻の少し前に、全画面でお知らせが出ます。</p>
+        <div class="step"><span class="step-n">1</span><span class="step-b"><b>やることが大きく表示されます</b><p>「シャッターを開ける」など、その時刻の作業が出ます。担当者が未選択のときはその場で選べます。</p></span></div>
+        <div class="step"><span class="step-n">2</span><span class="step-b"><b>その場でチェックできます</b><p>大きなボタンをタップすると、通常のチェックと同じように記録されます。</p></span></div>
+        <div class="step"><span class="step-n">3</span><span class="step-b"><b>「完了・閉じる」でもとの画面へ</b><p>まだ作業できないときは「5分後にもう一度」。閉じても、指定時刻ちょうどにもう一度鳴ります。</p></span></div>
+      </div>
+
+      <div class="card">
+        <h3>履歴・集計の見かた</h3>
+        <div class="step"><span class="step-n">履</span><span class="step-b"><b>履歴</b><p>日ごとの記録が見られます。タップで開くと、1項目ごとに「実施した人・時刻」または赤字の「未実施」が確認できます。</p></span></div>
+        <div class="step"><span class="step-n">集</span><span class="step-b"><b>集計</b><p>週次／月次で対応率が出ます。担当者ごと・区分ごと・日ごとの数字と「抜けやすい項目」も確認できます。「PDFで保存」でレポートを出せます。</p></span></div>
+      </div>
+
+      <div class="card">
+        <h3>設定を変える（アラーム・作業内容）</h3>
+        <p class="help-lead">「設定」タブから、いつでも変更できます。変更はすぐ保存され、チェック画面にも反映されます。</p>
+        <div class="step"><span class="step-n">⏰</span><span class="step-b"><b>アラームを鳴らす時刻を変える</b><p>設定タブ →「アラーム」。時刻ごとに「オン／オフ」を切り替えられます。オンにした時刻は<span class="tag">マスト</span>表示になり、その時刻に未実施があると全画面で鳴ります。<br>（初期設定：10:50 と 20:00 がオン）</p></span></div>
+        <div class="step"><span class="step-n">⏱</span><span class="step-b"><b>「何分前に鳴らすか」を変える</b><p>設定タブ →「アラーム」→「何分前に鳴らすか」。時刻ちょうど〜15分前から選べます。（初期設定：5分前）</p></span></div>
+        <div class="step"><span class="step-n">✎</span><span class="step-b"><b>作業内容を変える・追加する</b><p>設定タブ →「作業項目」→ 開店／営業中／閉店を選ぶ。<br>・時刻や内容は、その場で文字を書き換えれば変更できます<br>・いらない項目は「削除」<br>・いちばん下の欄に「時刻・区分・内容」を入れて「追加」で新しい項目を足せます</p></span></div>
+        <div class="step"><span class="step-n">👤</span><span class="step-b"><b>スタッフを変える</b><p>設定タブ →「スタッフ」。名前の書き換え・削除・追加ができます。</p></span></div>
+        <div class="qa" style="margin-top:8px"><b>ヒント：アラームの「内容」＝その時刻の作業そのもの</b><p>アラームで表示される文章は、その時刻に登録されている作業項目です。文言を変えたいときは「作業項目」で該当の項目を書き換えれば、アラームの表示もそのまま変わります。</p></div>
+      </div>
+
+      <div class="card">
+        <h3>こんなときは</h3>
+        <div class="qa"><b>Q. アラームが鳴らない</b><p>右上が「🔔 音オン」になっているか確認してください。また、アプリを開いている間だけ鳴ります。画面を消す・別アプリに切り替えると鳴りません。確実に鳴らしたい時刻は、iPad標準の「時計」アプリでもアラームをセットしておくと安心です。</p></div>
+        <div class="qa"><b>Q. 画面が勝手に暗くなる</b><p>設定 → 画面表示と明るさ → 自動ロックを「しない」にして、レジ横で開きっぱなしにするのがおすすめです。</p></div>
+        <div class="qa"><b>Q. 押し間違えて記録してしまった</b><p>もう一度その項目をタップすれば取り消せます。記録を確定したあとも「記録をやり直す」から戻せます。</p></div>
+        <div class="qa"><b>Q. 担当者やアラームの時刻を変えたい</b><p>「設定」タブから、スタッフの追加・削除、作業項目の追加・削除、アラームを鳴らす時刻の変更ができます。</p></div>
+        <div class="qa"><b>Q. 記録はどこに残る？</b><p>このiPadの中に保存されます。複数台で使うと台ごとに履歴が分かれます。集計をまとめたいときは設定タブの「書き出す（CSV）」を使ってください。</p></div>
       </div>
     </div>
   </div>
@@ -1292,7 +1397,28 @@
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
-      navigator.serviceWorker.register("./sw.js").catch(function () {});
+      navigator.serviceWorker.register("./sw.js").then(function (reg) {
+        // 新しい版があれば取り込む
+        reg.addEventListener("updatefound", function () {
+          var sw = reg.installing;
+          if (!sw) return;
+          sw.addEventListener("statechange", function () {
+            if (sw.state === "installed" && navigator.serviceWorker.controller) {
+              sw.postMessage("skipWaiting");
+            }
+          });
+        });
+        // 定期的に更新チェック
+        setInterval(function () { reg.update(); }, 60 * 60 * 1000);
+      }).catch(function () {});
+
+      // 新しいSWが制御を握ったら一度だけ再読み込みして最新を表示
+      var refreshed = false;
+      navigator.serviceWorker.addEventListener("controllerchange", function () {
+        if (refreshed) return;
+        refreshed = true;
+        window.location.reload();
+      });
     });
   }
 })();
