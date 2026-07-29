@@ -446,8 +446,9 @@
           <span class="accord-arrow" id="staffArrow">▼</span>
         </button>
         <div class="accord-body" id="staffAccordBody" style="display:none">
-          <div class="bar" style="margin-bottom:10px">
-            <button class="btn ghost sm" id="staffFromShiftBtn">シフトから自動取得</button>
+          <div class="bar" style="margin-bottom:10px;flex-wrap:wrap">
+            <button class="btn ghost sm" id="staffFromShiftBtn">シフトから自動取得（7月以降）</button>
+            <button class="btn ghost sm" id="staffClearBtn" style="color:var(--shu);border-color:var(--shu)">リストを全消し</button>
           </div>
           <div id="staffList"></div>
           <div class="lrow" style="border:0">
@@ -950,6 +951,31 @@
       s.assignManual = true; // 手動変更フラグ：自動上書きを防ぐ
       saveMonth(mk(S.date));
     };
+
+    // 休業日チェック
+    var dayData = shiftCache[S.date];
+    var isHoliday = dayData && dayData.holiday && !Object.keys(sess.checks).length;
+    var progEl = document.getElementById("pgNum").parentElement.parentElement;
+    var holidayBanner = document.getElementById("holidayBanner");
+    if (!holidayBanner) {
+      holidayBanner = document.createElement("div");
+      holidayBanner.id = "holidayBanner";
+      holidayBanner.style.cssText = "background:#fdf3f1;border-radius:12px;padding:16px;text-align:center;font-family:var(--mincho);font-size:17px;font-weight:600;color:var(--shu);letter-spacing:.08em;margin-bottom:14px;display:none";
+      holidayBanner.textContent = "🏖 本日は休業日です";
+      progEl.parentElement.insertBefore(holidayBanner, progEl);
+    }
+    var isTemporary = dayData && dayData.temporary;
+    if (isHoliday) {
+      holidayBanner.textContent = "🏖 本日は休業日です";
+      holidayBanner.style.background = "#fdf3f1";
+      holidayBanner.style.color = "var(--shu)";
+    } else if (isTemporary) {
+      holidayBanner.textContent = "✨ 本日は臨時営業です";
+      holidayBanner.style.background = "#eef6ee";
+      holidayBanner.style.color = "var(--koke)";
+    }
+    holidayBanner.style.display = (isHoliday || isTemporary) ? "block" : "none";
+    progEl.style.display = isHoliday ? "none" : "";
 
     var st = tally(sess);
     document.getElementById("pgNum").textContent = pct(st.ok, st.tot) + "%";
@@ -1665,19 +1691,24 @@
 
     // シフトからスタッフ自動取得
     function isValidStaffName(n) {
-      if (!n || n.length < 2 || n.length > 8) return false;  // 2〜8文字
-      if (/^\d/.test(n)) return false;                         // 数字始まりは除外
-      if (/[a-zA-Z]{3,}/.test(n)) return false;               // 英字3文字以上は除外
-      if (/[\s　]/.test(n)) return false;                      // スペース含むものは除外（説明文）
-      // ひらがな・カタカナ・漢字・数字・記号が含まれる
+      if (!n || n.length < 2) return false;               // 2文字以上
+      if (/^\d+$/.test(n)) return false;                  // 数字のみは除外
+      if (/[\s　]/.test(n)) return false;                 // スペース含むものは除外（説明文）
       if (!/[぀-ヿ一-鿿]/.test(n)) return false; // 日本語文字が含まれない
-      // よくあるイベント・業務名を除外
       var excludeWords = ["アワード","SPARK","WS","NCS","BS","IT","SU","NBA","販売","講演","交流","卒業","特別","ベーシック","勤務","時間","セル数","合計"];
       for (var i = 0; i < excludeWords.length; i++) {
         if (n.indexOf(excludeWords[i]) >= 0) return false;
       }
       return true;
     }
+    // スタッフリスト全消し
+    document.getElementById("staffClearBtn").onclick = function() {
+      if (!confirm("スタッフリストを全員削除します。よろしいですか？\n（過去の記録に残った名前はそのままです）")) return;
+      cfg.staff = [];
+      saveCfg(); renderCfg(); renderCheck();
+      toast("スタッフリストを消去しました。「シフトから自動取得」で再登録してください。");
+    };
+
     document.getElementById("staffFromShiftBtn").onclick = function() {
       var names = {};
       var cutoff = "2026-07-01"; // 7月以降のみ
