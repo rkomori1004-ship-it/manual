@@ -694,9 +694,37 @@
 
   var shiftCache = {}; // { "YYYY-MM-DD": { "open":["名前"], "mid":["名前"], "close":["名前"] } }
 
-  function getShiftNames(dateStr, phase) {
-    if (shiftCache[dateStr] && shiftCache[dateStr][phase]) return shiftCache[dateStr][phase];
-    return [];
+  // 指定日・時刻（分）時点の担当者名リストを返す
+  // timeMin省略時は現在時刻を使う
+  function getShiftNames(dateStr, phase, timeMin) {
+    var d = shiftCache[dateStr];
+    if (!d) return [];
+    // slotsがあれば時刻で絞り込む
+    if (d.slots && d.slots.length) {
+      if (timeMin === undefined) {
+        var now = new Date();
+        timeMin = now.getHours() * 60 + now.getMinutes();
+      }
+      // timeMin以下で最大のfromのslotを選ぶ
+      var best = null;
+      d.slots.forEach(function(slot) {
+        if (slot.from <= timeMin) best = slot;
+      });
+      if (best) return best.names;
+    }
+    // fallback: open/mid/close
+    return d[phase] || [];
+  }
+
+  // 現在時刻のシフト担当者IDを返す（スタッフリストと照合）
+  function getShiftStaffId(dateStr, phase) {
+    var names = getShiftNames(dateStr, phase);
+    for (var i = 0; i < names.length; i++) {
+      for (var j = 0; j < cfg.staff.length; j++) {
+        if (cfg.staff[j].name === names[i]) return cfg.staff[j].id;
+      }
+    }
+    return null;
   }
 
   async function fetchShift(url, silent) {
@@ -789,6 +817,21 @@
     var ab = document.getElementById("assignBox");
     var who = whoOf(sess);
     var shiftNames = getShiftNames(S.date, S.phase);
+
+    // シフトから現在時刻に合った担当者を自動セット
+    var shiftId = getShiftStaffId(S.date, S.phase);
+    if (shiftId && shiftId !== who) {
+      // 手動で変更済みの場合は上書きしない（手動変更フラグを確認）
+      var s0 = session(S.date, S.phase, false);
+      var manuallySet = s0 && s0.assignManual;
+      if (!manuallySet) {
+        var s = session(S.date, S.phase, true);
+        s.assign.all = shiftId;
+        who = shiftId;
+        saveMonth(mk(S.date));
+      }
+    }
+
     ab.innerHTML =
       '<div style="flex:1;min-width:0">' +
         '<span style="font-size:11px;letter-spacing:.1em;color:var(--muted)">本日の担当者</span>' +
@@ -803,6 +846,7 @@
     document.getElementById("assignSel").onchange = function () {
       var s = session(S.date, S.phase, true);
       s.assign.all = this.value;
+      s.assignManual = true; // 手動変更フラグ：自動上書きを防ぐ
       saveMonth(mk(S.date));
     };
 
@@ -1511,6 +1555,22 @@
       var d = new Date();
       document.getElementById("clock").textContent = p2(d.getHours()) + ":" + p2(d.getMinutes());
     }, 1000);
+
+    // 30秒ごとにシフトの担当者が変わっていないか確認して自動切り替え
+    setInterval(function() {
+      if (S.date !== today()) return; // 過去日は対象外
+      var sess = session(S.date, S.phase, false);
+      if (!sess || sess.assignManual) return; // 手動変更済みは触らない
+      var shiftId = getShiftStaffId(S.date, S.phase);
+      var currentWho = whoOf(sess);
+      if (shiftId && shiftId !== currentWho) {
+        var s = session(S.date, S.phase, true);
+        s.assign.all = shiftId;
+        saveMonth(mk(S.date));
+        renderCheck();
+        toast("担当者が「" + staffName(shiftId) + "」に自動で切り替わりました。");
+      }
+    }, 30 * 1000);
   }
 
   boot();
