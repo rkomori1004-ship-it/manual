@@ -57,7 +57,7 @@
   .tab { flex: 1; padding: 12px 4px; border-radius: 10px 10px 0 0; background: rgba(255,255,255,.1); color: rgba(255,255,255,.75); font-size: 14px; font-weight: 600; letter-spacing: .06em; }
   .tab.on { background: var(--ground); color: var(--ai); }
 
-  .wrap { padding: 16px 18px 120px; max-width: 940px; margin: 0 auto; }
+  .wrap { padding: 16px 18px 120px; max-width: 940px; margin: 0 auto; background: var(--ground); }
   .panel { display: none; }
   .panel.on { display: block; }
 
@@ -231,8 +231,10 @@
   .accord-hd:active { background: var(--ai-soft); }
   .accord-arrow { font-size: 11px; color: var(--muted); transition: transform .2s; flex: none; }
   .accord-arrow.open { transform: rotate(180deg); }
-  .accord-body { padding: 0 16px 16px; border-top: 1px solid var(--rail); background: var(--card); }
+  .accord-body { padding: 0 16px 16px; border-top: 1px solid var(--rail); background: #ffffff !important; isolation: isolate; }
 
+  .accord-body .step.alarm { background: #fff8e6 !important; }
+  .accord-body .step.report { background: #eef6ee !important; }
   /* ---------- how-to ---------- */
   .help-lead { font-size: 14px; color: var(--muted); margin: 0 0 14px; }
   .step { display: flex; gap: 13px; padding: 11px 0; border-bottom: 1px solid #f0f3f4; }
@@ -276,12 +278,12 @@
   .drawer-icon { font-size: 20px; }
 
   /* ---------- drawer panels (full-screen overlays) ---------- */
-  .drawer-panel { position: fixed; inset: 0; z-index: 50; background: var(--ground); transform: translateX(100%); transition: transform .25s cubic-bezier(.4,0,.2,1); overflow-y: auto; }
+  .drawer-panel { position: fixed; inset: 0; z-index: 50; background: var(--ground) !important; transform: translateX(100%); transition: transform .25s cubic-bezier(.4,0,.2,1); overflow-y: auto; }
   .drawer-panel.on { transform: translateX(0); }
   .drawer-panel-hd { position: sticky; top: 0; z-index: 2; background: var(--ai); color: #fff; display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
   .drawer-panel-hd span { font-family: var(--mincho); font-size: 17px; font-weight: 600; letter-spacing: .08em; }
   .drawer-back { color: #fff; font-size: 14px; font-weight: 700; padding: 7px 12px; background: rgba(255,255,255,.18); border-radius: 8px; line-height: 1; letter-spacing: .04em; }
-  .drawer-panel-body { padding: 14px 16px 120px; max-width: 940px; margin: 0 auto; }
+  .drawer-panel-body { padding: 14px 16px 120px; max-width: 940px; margin: 0 auto; background: var(--ground) !important; }
 
   /* ---------- toast ---------- */
   #toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(80px); background: var(--sumi); color: #fff; padding: 13px 22px; border-radius: 30px; font-size: 14px; opacity: 0; transition: .25s; pointer-events: none; z-index: 99; }
@@ -447,7 +449,7 @@
         </button>
         <div class="accord-body" id="staffAccordBody" style="display:none">
           <div class="bar" style="margin-bottom:10px;flex-wrap:wrap">
-            <button class="btn ghost sm" id="staffFromShiftBtn">シフトから自動取得（7月以降）</button>
+            <button class="btn ghost sm" id="staffFromShiftBtn">シフトから自動取得</button>
             <button class="btn ghost sm" id="staffClearBtn" style="color:var(--shu);border-color:var(--shu)">リストを全消し</button>
           </div>
           <div id="staffList"></div>
@@ -552,7 +554,7 @@
           <span style="font-size:14px;font-weight:700;letter-spacing:.08em;color:var(--ai)">📅 1日の流れ</span>
           <span class="accord-arrow" id="helpFlowArrow">▼</span>
         </button>
-        <div class="accord-body" id="helpFlowBody" style="display:none">
+        <div class="accord-body" id="helpFlowBody" style="display:none;background:#ffffff">
           <div class="phase-cap">開店（9:20〜10:50）</div>
           <div class="step"><span class="step-n t ph">9:20</span><span class="step-b"><b>開店タブ・担当者を確認</b><p>開錠・電気・空調・ケトル。</p></span></div>
           <div class="step"><span class="step-n t ph">9:30〜</span><span class="step-b"><b>炊飯・ドリンク・清掃・おむすび</b></span></div>
