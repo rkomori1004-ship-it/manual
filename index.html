@@ -349,6 +349,19 @@
     <!-- SETTINGS -->
     <div class="panel" id="p-cfg">
       <div class="card">
+        <h3>シフト連携</h3>
+        <p class="help-lead">GoogleスプレッドシートのシフトURLを貼ると、今日の担当者を自動で読み込めます。</p>
+        <div class="fld" style="width:100%"><span>シフト表のURL（公開リンク）</span>
+          <input class="inp" id="shiftUrlInp" placeholder="https://docs.google.com/spreadsheets/d/..." style="width:100%">
+        </div>
+        <div class="bar" style="margin-top:10px;gap:8px">
+          <button class="btn sm" id="shiftSaveBtn">URLを保存</button>
+          <button class="btn ghost sm" id="shiftFetchBtn">今すぐ読み込む</button>
+        </div>
+        <div id="shiftStatus" style="font-size:13px;color:var(--muted);margin-top:8px"></div>
+        <div class="warn" style="margin-top:10px;font-size:12.5px">シートを「リンクを知っている全員が<b>閲覧可能</b>」に共有設定してください。そうしないと読み込めません。</div>
+      </div>
+      <div class="card">
         <h3>スタッフ</h3>
         <div id="staffList"></div>
         <div class="lrow" style="border:0">
@@ -669,6 +682,84 @@
     return out;
   }
 
+
+  /* ============ シフト連携 ============ */
+  function shiftCSVUrl(sheetUrl) {
+    // /edit#gid=XXXXX → export?format=csv&gid=XXXXX
+    var m = sheetUrl.match(/spreadsheets\/d\/([^/]+)/);
+    if (!m) return null;
+    var gid = (sheetUrl.match(/gid=([0-9]+)/) || [])[1] || "0";
+    return "https://docs.google.com/spreadsheets/d/" + m[1] + "/export?format=csv&gid=" + gid;
+  }
+
+  var shiftCache = {}; // { "YYYY-MM-DD": { "open":["名前"], "mid":["名前"], "close":["名前"] } }
+
+  function getShiftNames(dateStr, phase) {
+    if (shiftCache[dateStr] && shiftCache[dateStr][phase]) return shiftCache[dateStr][phase];
+    return [];
+  }
+
+  async function fetchShift(url, silent) {
+    if (!url) return;
+    var isGAS = url.indexOf("script.google.com") !== -1 || url.indexOf("macros/s/") !== -1;
+    var fetchUrl = isGAS ? url : shiftCSVUrl(url);
+    if (!isGAS && !fetchUrl) { if (!silent) toast("URLの形式が正しくありません。"); return; }
+
+    var statusEl = document.getElementById("shiftStatus");
+    if (statusEl && !silent) statusEl.textContent = "読み込み中…";
+
+    try {
+      var res = await fetch(fetchUrl);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+
+      if (isGAS) {
+        var json = await res.json();
+        if (!json.ok) throw new Error(json.error || "スクリプトエラー");
+        shiftCache = json.data || {};
+      } else {
+        var text = await res.text();
+        parseShiftCSV(text);
+      }
+
+      await sSet("shift:url", url);
+      await sSet("shift:cache", JSON.stringify(shiftCache));
+      await sSet("shift:lastfetch", today());
+
+      var days = Object.keys(shiftCache).length;
+      if (statusEl) statusEl.textContent = "✓ 最終取得：" + today() + "（" + days + "日分）";
+      if (!silent) { toast("シフトを読み込みました。"); renderCheck(); }
+      else renderCheck();
+    } catch (e) {
+      if (statusEl && !silent) statusEl.textContent = "⚠ 読み込み失敗：" + e.message;
+      if (!silent) toast("シフトの読み込みに失敗しました。URLとネットワークを確認してください。");
+    }
+  }
+
+  async function loadShiftCache() {
+    var cached = await sGet("shift:cache");
+    if (cached) { try { shiftCache = JSON.parse(cached); } catch(e) {} }
+
+    var url = await sGet("shift:url");
+    if (!url) return;
+
+    var inp = document.getElementById("shiftUrlInp");
+    if (inp) inp.value = url;
+
+    var lastFetch = await sGet("shift:lastfetch");
+    var statusEl = document.getElementById("shiftStatus");
+
+    if (lastFetch !== today()) {
+      if (statusEl) statusEl.textContent = "自動更新中…";
+      await fetchShift(url, true);
+    } else {
+      var days = Object.keys(shiftCache).length;
+      if (statusEl) statusEl.textContent = "✓ 最終取得：" + lastFetch + "（" + days + "日分）";
+    }
+
+    // 3時間ごとに自動再取得（シフト変更に追従）
+    setInterval(function() { fetchShift(url, true); }, 3 * 60 * 60 * 1000);
+  }
+
   function tasksOf(ph) { return cfg.tasks.filter(function (t) { return t.phase === ph; }); }
   /* 担当者は1セッション1名。旧データ（区分別）が残っていれば最初の1名を拾う */
   function whoOf(sess) {
@@ -696,10 +787,19 @@
     var sess = session(S.date, S.phase, false) || { date: S.date, phase: S.phase, assign: {}, checks: {}, note: "", done: null };
 
     var ab = document.getElementById("assignBox");
-    ab.innerHTML = '<label class="fld" style="flex:1 1 100%"><span>本日の担当者</span><select class="inp" id="assignSel">' +
-      '<option value="">— 選択 —</option>' +
-      cfg.staff.map(function (s) { return '<option value="' + s.id + '"' + (whoOf(sess) === s.id ? " selected" : "") + ">" + esc(s.name) + "</option>"; }).join("") +
-      "</select></label>";
+    var who = whoOf(sess);
+    var shiftNames = getShiftNames(S.date, S.phase);
+    ab.innerHTML =
+      '<div style="flex:1;min-width:0">' +
+        '<span style="font-size:11px;letter-spacing:.1em;color:var(--muted)">本日の担当者</span>' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-top:5px;flex-wrap:wrap">' +
+          '<select class="inp" id="assignSel" style="flex:1;min-width:120px">' +
+            '<option value="">— 選択 —</option>' +
+            cfg.staff.map(function (st) { return '<option value="' + st.id + '"' + (who === st.id ? " selected" : "") + ">" + esc(st.name) + "</option>"; }).join("") +
+          '</select>' +
+          (shiftNames.length ? '<span style="font-size:12px;color:var(--asagi);white-space:nowrap">シフト: ' + esc(shiftNames.join("・")) + '</span>' : '') +
+        '</div>' +
+      '</div>';
     document.getElementById("assignSel").onchange = function () {
       var s = session(S.date, S.phase, true);
       s.assign.all = this.value;
@@ -1372,6 +1472,26 @@
       saveCfg(); renderCfg(); renderCheck();
     };
     document.getElementById("expBtn").onclick = exportJSON;
+
+    // シフト連携
+    await loadShiftCache();
+    var shiftSaveBtn = document.getElementById("shiftSaveBtn");
+    var shiftFetchBtn = document.getElementById("shiftFetchBtn");
+    if (shiftSaveBtn) {
+      shiftSaveBtn.onclick = async function () {
+        var url = document.getElementById("shiftUrlInp").value.trim();
+        if (!url) { toast("URLを入力してください。"); return; }
+        await sSet("shift:url", url);
+        toast("URLを保存しました。「今すぐ読み込む」で取得してください。");
+      };
+    }
+    if (shiftFetchBtn) {
+      shiftFetchBtn.onclick = function () {
+        var url = document.getElementById("shiftUrlInp").value.trim();
+        if (!url) { toast("URLを入力してください。"); return; }
+        fetchShift(url);
+      };
+    }
     document.getElementById("csvBtn").onclick = exportCSV;
 
     document.getElementById("bellBtn").onclick = toggleSound;
