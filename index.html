@@ -549,22 +549,17 @@
         </div>
       </div>
 
-      <div class="card" style="padding:0;overflow:hidden">
-        <button class="accord-hd" id="helpFlowBtn">
-          <span style="font-size:14px;font-weight:700;letter-spacing:.08em;color:var(--ai)">📅 1日の流れ</span>
-          <span class="accord-arrow" id="helpFlowArrow">▼</span>
-        </button>
-        <div class="accord-body" id="helpFlowBody" style="display:none;background:#ffffff">
-          <div class="phase-cap">開店（9:20〜10:50）</div>
-          <div class="step"><span class="step-n t ph">9:20</span><span class="step-b"><b>開店タブ・担当者を確認</b><p>開錠・電気・空調・ケトル。</p></span></div>
-          <div class="step"><span class="step-n t ph">9:30〜</span><span class="step-b"><b>炊飯・ドリンク・清掃・おむすび</b></span></div>
-          <div class="step alarm"><span class="step-n t">10:50</span><span class="step-b"><b>🔔 アラーム：シャッター・看板OPEN</b></span></div>
-          <div class="step"><span class="step-n">✓</span><span class="step-b"><b>開店を記録する</b></span></div>
-          <div class="phase-cap">営業中・閉店</div>
-          <div class="step"><span class="step-n">切</span><span class="step-b"><b>営業中タブに切り替え</b><p>毎時トイレ・日報。15:00〜棚整頓・仕込み。</p></span></div>
-          <div class="step alarm"><span class="step-n t">20:00</span><span class="step-b"><b>🔔 アラーム：閉店作業</b></span></div>
-          <div class="step report"><span class="step-n t">20:15</span><span class="step-b"><b>報告完了 → 閉店を記録する</b><p>① レジ締め ② 日報 ③ 商品・在庫報告 ④ 食品期限報告 ⑤ ゴミ</p></span></div>
-        </div>
+      <div class="card" style="background:var(--card)">
+        <h3 style="font-size:14px;font-weight:700;letter-spacing:.08em;color:var(--ai);margin:0 0 12px">📅 1日の流れ</h3>
+        <div class="phase-cap">開店（9:20〜10:50）</div>
+        <div class="step"><span class="step-n t ph">9:20</span><span class="step-b"><b>開店タブ・担当者を確認</b><p>開錠・電気・空調・ケトル。</p></span></div>
+        <div class="step"><span class="step-n t ph">9:30〜</span><span class="step-b"><b>炊飯・ドリンク・清掃・おむすび</b></span></div>
+        <div class="step" style="background:transparent"><span class="step-n t" style="background:var(--shu)">10:50</span><span class="step-b"><b>🔔 アラーム：シャッター・看板OPEN</b></span></div>
+        <div class="step"><span class="step-n">✓</span><span class="step-b"><b>開店を記録する</b></span></div>
+        <div class="phase-cap">営業中・閉店</div>
+        <div class="step"><span class="step-n">切</span><span class="step-b"><b>営業中タブに切り替え</b><p>毎時トイレ・日報。15:00〜棚整頓・仕込み。</p></span></div>
+        <div class="step" style="background:transparent"><span class="step-n t" style="background:var(--shu)">20:00</span><span class="step-b"><b>🔔 アラーム：閉店作業</b></span></div>
+        <div class="step" style="background:transparent"><span class="step-n t" style="background:var(--koke)">20:15</span><span class="step-b"><b>報告完了 → 閉店を記録する</b><p>① レジ締め ② 日報 ③ 商品・在庫報告 ④ 食品期限報告 ⑤ ゴミ</p></span></div>
       </div>
 
       <div class="card" style="padding:0;overflow:hidden">
@@ -1670,7 +1665,6 @@
       ["dataAccordBtn",   "dataAccordBody",   "dataArrow"],
       ["helpBasicBtn",    "helpBasicBody",    "helpBasicArrow"],
       ["helpAlarmBtn",    "helpAlarmBody",    "helpAlarmArrow"],
-      ["helpFlowBtn",     "helpFlowBody",     "helpFlowArrow"],
       ["helpQaBtn",       "helpQaBody",       "helpQaArrow"]
     ].forEach(function(a) {
       var btn = document.getElementById(a[0]);
