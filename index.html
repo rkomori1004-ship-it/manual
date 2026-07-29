@@ -833,18 +833,24 @@
 
     // シフトから現在時刻に合った担当者を自動セット
     var shiftId = getShiftStaffId(S.date, S.phase);
-    // デバッグ：シフト名とスタッフ名の照合状況をコンソールに出す
     if (S.date === today()) {
       var dbgNames = getShiftNames(S.date, S.phase);
       var dbgStaff = cfg.staff.map(function(st){ return st.name; });
-      console.log("[シフト照合] シフト名:", dbgNames, "スタッフ:", dbgStaff, "マッチしたID:", shiftId);
+      var dbgCache = shiftCache[today()];
+      var nowMin2 = new Date().getHours() * 60 + new Date().getMinutes();
       if (dbgNames.length && !shiftId) {
-        console.log("[シフト照合] 正規化比較:");
-        dbgNames.forEach(function(n) {
-          dbgStaff.forEach(function(s) {
-            console.log(" ", JSON.stringify(n), "→", normName(n), " vs ", JSON.stringify(s), "→", normName(s), " 一致:", normName(n)===normName(s));
-          });
-        });
+        var statusEl = document.getElementById("shiftStatus");
+        if (statusEl) {
+          var dbgText = "照合失敗 シフト:「" + dbgNames.map(function(n){ return n + "("+normName(n)+")"; }).join("・") + "」";
+          dbgText += " スタッフ:「" + dbgStaff.map(function(s){ return s + "("+normName(s)+")"; }).join("・") + "」";
+          statusEl.textContent = dbgText;
+        }
+      } else if (!dbgNames.length) {
+        var statusEl2 = document.getElementById("shiftStatus");
+        if (statusEl2) {
+          var slots = dbgCache ? JSON.stringify(dbgCache.slots) : "なし";
+          statusEl2.textContent = "シフト名が空 現在時刻:" + nowMin2 + "分 今日のslots:" + slots;
+        }
       }
     }
     if (shiftId && shiftId !== who) {
