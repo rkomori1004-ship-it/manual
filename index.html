@@ -226,6 +226,13 @@
   @keyframes flash { 0%, 100% { border-top-color: var(--shu); } 50% { border-top-color: #f0c14b; } }
   .alarm.on .alarm-card { animation: flash 1.1s ease-in-out infinite; }
 
+  /* ---------- accordion ---------- */
+  .accord-hd { width: 100%; display: flex; align-items: center; gap: 8px; padding: 16px; text-align: left; }
+  .accord-hd:active { background: var(--ai-soft); }
+  .accord-arrow { font-size: 11px; color: var(--muted); transition: transform .2s; flex: none; }
+  .accord-arrow.open { transform: rotate(180deg); }
+  .accord-body { padding: 0 16px 16px; border-top: 1px solid var(--rail); background: var(--card); }
+
   /* ---------- how-to ---------- */
   .help-lead { font-size: 14px; color: var(--muted); margin: 0 0 14px; }
   .step { display: flex; gap: 13px; padding: 11px 0; border-bottom: 1px solid #f0f3f4; }
@@ -249,10 +256,11 @@
 
 
   /* ---------- hamburger ---------- */
-  .hamburger { margin-left: auto; flex: none; display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 10px 14px; border-radius: 10px 10px 0 0; background: rgba(255,255,255,.1); }
-  .hamburger span { display: block; width: 22px; height: 2.5px; background: rgba(255,255,255,.85); border-radius: 2px; }
+  .hamburger { margin-left: auto; flex: none; display: flex; flex-direction: column; justify-content: center; gap: 5px; padding: 12px 16px 14px; border-radius: 10px 10px 0 0; background: rgba(255,255,255,.12); cursor: pointer; }
+  .hamburger span { display: block; width: 22px; height: 2.5px; background: #fff; border-radius: 2px; }
   .hamburger.on { background: var(--ground); }
   .hamburger.on span { background: var(--ai); }
+  .hamburger:active { background: rgba(255,255,255,.22); }
 
   /* ---------- drawer ---------- */
   .drawer-bg { position: fixed; inset: 0; z-index: 40; background: rgba(20,28,32,.45); display: none; }
@@ -261,7 +269,7 @@
   .drawer.on { transform: translateX(0); }
   .drawer-hd { display: flex; align-items: center; padding: 18px 16px 14px; border-bottom: 1px solid var(--rail); background: var(--ai); color: #fff; }
   .drawer-title { font-family: var(--mincho); font-size: 17px; font-weight: 600; letter-spacing: .08em; flex: 1; }
-  .drawer-close { color: #fff; font-size: 18px; padding: 6px 10px; opacity: .8; }
+  .drawer-close { color: #fff; font-size: 20px; font-weight: 700; padding: 8px 12px; background: rgba(255,255,255,.18); border-radius: 8px; line-height: 1; }
   .drawer-body { padding: 10px 8px; }
   .drawer-item { width: 100%; display: flex; align-items: center; gap: 12px; padding: 16px 14px; border-radius: 12px; font-size: 16px; font-weight: 600; color: var(--sumi); text-align: left; }
   .drawer-item:active { background: var(--ai-soft); }
@@ -272,7 +280,7 @@
   .drawer-panel.on { transform: translateX(0); }
   .drawer-panel-hd { position: sticky; top: 0; z-index: 2; background: var(--ai); color: #fff; display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
   .drawer-panel-hd span { font-family: var(--mincho); font-size: 17px; font-weight: 600; letter-spacing: .08em; }
-  .drawer-back { color: #fff; font-size: 14px; font-weight: 600; padding: 8px 4px; opacity: .9; }
+  .drawer-back { color: #fff; font-size: 14px; font-weight: 700; padding: 7px 12px; background: rgba(255,255,255,.18); border-radius: 8px; line-height: 1; letter-spacing: .04em; }
   .drawer-panel-body { padding: 14px 16px 120px; max-width: 940px; margin: 0 auto; }
 
   /* ---------- toast ---------- */
@@ -414,63 +422,90 @@
       <span>設定</span>
     </div>
     <div class="drawer-panel-body" id="dp-cfg-body">
-      <div class="card">
-        <h3>シフト連携</h3>
-        <p class="help-lead">GoogleスプレッドシートのシフトURLを貼ると、今日の担当者を自動で読み込めます。</p>
-        <div class="fld" style="width:100%"><span>シフト表のURL（公開リンク）</span>
-          <input class="inp" id="shiftUrlInp" placeholder="https://docs.google.com/spreadsheets/d/..." style="width:100%">
-        </div>
-        <div class="bar" style="margin-top:10px;gap:8px">
-          <button class="btn sm" id="shiftSaveBtn">URLを保存</button>
-          <button class="btn ghost sm" id="shiftFetchBtn">今すぐ読み込む</button>
-        </div>
-        <div id="shiftStatus" style="font-size:13px;color:var(--muted);margin-top:8px"></div>
-        <div class="warn" style="margin-top:10px;font-size:12.5px">シートを「リンクを知っている全員が<b>閲覧可能</b>」に共有設定してください。そうしないと読み込めません。</div>
-      </div>
-      <div class="card">
-        <h3>スタッフ</h3>
-        <div id="staffList"></div>
-        <div class="lrow" style="border:0">
-          <input class="inp" id="newStaff" placeholder="名前を入力">
-          <button class="btn sm" id="addStaff">追加</button>
+      <div class="card" style="padding:0;overflow:hidden">
+        <button class="accord-hd" id="shiftAccordBtn">
+          <span style="font-size:14px;font-weight:700;letter-spacing:.08em;color:var(--ai)">シフト連携</span>
+          <span id="shiftStatusBadge" style="flex:1;font-size:12px;color:var(--muted);margin-left:10px;text-align:left"></span>
+          <span class="accord-arrow" id="shiftArrow">▼</span>
+        </button>
+        <div class="accord-body" id="shiftAccordBody" style="display:none">
+          <p class="help-lead" style="margin-top:0">GoogleスプレッドシートのシフトURLを貼ると、今日の担当者を自動で読み込めます。</p>
+          <div class="fld" style="width:100%"><span>シフト表のURL（Apps Script WebアプリのURL）</span>
+            <input class="inp" id="shiftUrlInp" placeholder="https://script.google.com/macros/s/..." style="width:100%">
+          </div>
+          <div class="bar" style="margin-top:10px;gap:8px">
+            <button class="btn sm" id="shiftSaveBtn">URLを保存</button>
+            <button class="btn ghost sm" id="shiftFetchBtn">今すぐ読み込む</button>
+          </div>
+          <div id="shiftStatus" style="font-size:13px;color:var(--muted);margin-top:8px"></div>
         </div>
       </div>
-      <div class="card">
-        <h3>作業項目</h3>
-        <div class="bar">
-          <div class="seg" id="cfgSeg">
-            <button data-ph="open" class="on">開店</button>
-            <button data-ph="mid">営業中</button>
-            <button data-ph="close">閉店</button>
+      <div class="card" style="padding:0;overflow:hidden">
+        <button class="accord-hd" id="staffAccordBtn">
+          <span style="font-size:14px;font-weight:700;letter-spacing:.08em;color:var(--ai)">スタッフ</span>
+          <span class="accord-arrow" id="staffArrow">▼</span>
+        </button>
+        <div class="accord-body" id="staffAccordBody" style="display:none">
+          <div class="bar" style="margin-bottom:10px">
+            <button class="btn ghost sm" id="staffFromShiftBtn">シフトから自動取得</button>
+          </div>
+          <div id="staffList"></div>
+          <div class="lrow" style="border:0">
+            <input class="inp" id="newStaff" placeholder="名前を入力">
+            <button class="btn sm" id="addStaff">追加</button>
           </div>
         </div>
-        <div id="taskCfg"></div>
-        <div class="lrow" style="border:0;flex-wrap:wrap">
-          <input class="inp" id="ntTime" placeholder="9:20" style="width:88px">
-          <select class="inp" id="ntCat"><option>フロア</option><option>フード</option><option>ドリンク</option></select>
-          <input class="inp" id="ntTitle" placeholder="作業内容" style="flex:1;min-width:170px">
-          <button class="btn sm" id="addTask">追加</button>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <button class="accord-hd" id="taskAccordBtn">
+          <span style="font-size:14px;font-weight:700;letter-spacing:.08em;color:var(--ai)">作業項目</span>
+          <span class="accord-arrow" id="taskArrow">▼</span>
+        </button>
+        <div class="accord-body" id="taskAccordBody" style="display:none">
+          <div class="bar">
+            <div class="seg" id="cfgSeg">
+              <button data-ph="open" class="on">開店</button>
+              <button data-ph="mid">営業中</button>
+              <button data-ph="close">閉店</button>
+            </div>
+          </div>
+          <div id="taskCfg"></div>
+          <div class="lrow" style="border:0;flex-wrap:wrap">
+            <input class="inp" id="ntTime" placeholder="9:20" style="width:88px">
+            <select class="inp" id="ntCat"><option>フロア</option><option>フード</option><option>ドリンク</option></select>
+            <input class="inp" id="ntTitle" placeholder="作業内容" style="flex:1;min-width:170px">
+            <button class="btn sm" id="addTask">追加</button>
+          </div>
         </div>
       </div>
-      <div class="card">
-        <h3>アラーム</h3>
-        <div class="bar">
-          <label class="fld"><span>何分前に鳴らすか</span>
-            <select class="inp" id="leadSel">
-              <option value="0">時刻ちょうど</option><option value="3">3分前</option>
-              <option value="5">5分前</option><option value="10">10分前</option><option value="15">15分前</option>
-            </select></label>
+      <div class="card" style="padding:0;overflow:hidden">
+        <button class="accord-hd" id="alarmAccordBtn">
+          <span style="font-size:14px;font-weight:700;letter-spacing:.08em;color:var(--ai)">アラーム</span>
+          <span class="accord-arrow" id="alarmArrow">▼</span>
+        </button>
+        <div class="accord-body" id="alarmAccordBody" style="display:none">
+          <div class="bar">
+            <label class="fld"><span>何分前に鳴らすか</span>
+              <select class="inp" id="leadSel">
+                <option value="0">時刻ちょうど</option><option value="3">3分前</option>
+                <option value="5">5分前</option><option value="10">10分前</option><option value="15">15分前</option>
+              </select></label>
+          </div>
+          <div class="row-note" style="margin-bottom:10px">オンにした時刻は「マスト」表示になり、未実施があると全画面でお知らせします。</div>
+          <div id="alarmCfg"></div>
         </div>
-        <div class="row-note" style="margin-bottom:10px">オンにした時刻は「マスト」表示になり、未実施があると全画面でお知らせします。</div>
-        <div class="warn" style="margin-bottom:10px">アラームはこの画面を開いている間だけ鳴ります。画面を消したり別のアプリに切り替えると鳴りません。確実に鳴らしたい時刻は、iPad標準の「時計」アプリでもアラームを設定しておくと安心です（画面オフでも鳴ります）。自動ロックを「しない」にしておくのもおすすめです。</div>
-        <div id="alarmCfg"></div>
       </div>
-      <div class="card">
-        <h3>データ</h3>
-        <div class="warn">記録はこのiPadの中に保存されます。複数のiPadで使う場合は端末ごとに履歴が分かれます。集計をまとめたいときは「書き出す」で保存したファイルを共有してください。個人情報や暗証番号は入力しないでください。</div>
-        <div class="bar">
-          <button class="btn ghost sm" id="expBtn">記録を書き出す（JSON）</button>
-          <button class="btn ghost sm" id="csvBtn">記録を書き出す（CSV）</button>
+      <div class="card" style="padding:0;overflow:hidden">
+        <button class="accord-hd" id="dataAccordBtn">
+          <span style="font-size:14px;font-weight:700;letter-spacing:.08em;color:var(--ai)">データ</span>
+          <span class="accord-arrow" id="dataArrow">▼</span>
+        </button>
+        <div class="accord-body" id="dataAccordBody" style="display:none">
+          <div class="warn" style="margin-bottom:10px">記録はこのiPadの中に保存されます。複数のiPadで使う場合は端末ごとに履歴が分かれます。集計をまとめたいときは「書き出す」で保存したファイルを共有してください。個人情報や暗証番号は入力しないでください。</div>
+          <div class="bar">
+            <button class="btn ghost sm" id="expBtn">記録を書き出す（JSON）</button>
+            <button class="btn ghost sm" id="csvBtn">記録を書き出す（CSV）</button>
+          </div>
         </div>
       </div>
     </div>
@@ -481,85 +516,66 @@
       <span>使い方</span>
     </div>
     <div class="drawer-panel-body" id="dp-help-body">
-      <div class="card">
-        <h3>まず最初に</h3>
-        <p class="help-lead">開店時に一度だけ、音を出せるようにします。</p>
-        <div class="step"><span class="step-n">1</span><span class="step-b"><b>右上の「🔕 音オフ」を1回タップ</b><p>「🔔 音オン」に変わればOK。小さくテスト音が鳴ります。iPadは一度タッチしないと音を出せないので、開店のたびに押してください。タップするたびにオン／オフを切り替えられます。</p></span></div>
+
+      <div class="card" style="background:var(--ai);color:#fff">
+        <p style="margin:0;font-size:14px;line-height:1.7;opacity:.92">毎日の開店・閉店作業をチェックして記録するアプリです。シフト表と連携して担当者を自動セットします。</p>
       </div>
 
-      <div class="card">
-        <h3>1日の記録の流れ</h3>
-        <div class="step"><span class="step-n">1</span><span class="step-b"><b>区分をえらぶ</b><p>画面上の<span class="tag">開店</span><span class="tag">営業中</span><span class="tag">閉店</span>から、今の時間帯を選びます。日付は自動で今日です。</p></span></div>
-        <div class="step"><span class="step-n">2</span><span class="step-b"><b>本日の担当者をえらぶ</b><p>「本日の担当者」のプルダウンから自分を選びます。選ばないと項目にチェックできません（誰がやったか残すためです）。</p></span></div>
-        <div class="step"><span class="step-n">3</span><span class="step-b"><b>終わった作業をタップ</b><p>作業を終えるたびにその項目をタップ。担当者の名前と時刻が自動で記録されます。押し間違えたら、もう一度タップで取り消せます。</p></span></div>
-        <div class="step"><span class="step-n">4</span><span class="step-b"><b>最後に「作業を記録する」</b><p>画面いちばん下の緑のボタンを押すと、確認画面が出ます。内容を見て「記録する」。未実施があれば赤で一覧が出るので、確認してから記録できます。</p></span></div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <button class="accord-hd" id="helpBasicBtn">
+          <span style="font-size:14px;font-weight:700;letter-spacing:.08em;color:var(--ai)">📋 基本の使い方</span>
+          <span class="accord-arrow" id="helpBasicArrow">▼</span>
+        </button>
+        <div class="accord-body" id="helpBasicBody" style="display:none">
+          <div class="step"><span class="step-n">1</span><span class="step-b"><b>区分を選ぶ</b><p>画面上の<span class="tag">開店</span><span class="tag">営業中</span><span class="tag">閉店</span>から今の時間帯を選びます。担当者はシフトから自動でセットされます。</p></span></div>
+          <div class="step"><span class="step-n">2</span><span class="step-b"><b>作業が終わったらタップ</b><p>項目をタップすると担当者名と時刻が記録されます。押し間違えたらもう一度タップで取り消せます。</p></span></div>
+          <div class="step"><span class="step-n">3</span><span class="step-b"><b>緑のボタンで記録する</b><p>区分の作業が全部終わったら、画面下の「作業を記録する」をタップ。確認画面が出るので「記録する」で完了です。</p></span></div>
+        </div>
       </div>
 
-      <div class="card">
-        <h3>1日の流れ（開店〜報告完了）</h3>
-        <p class="help-lead">この順に進めれば、記録もれなく1日を終えられます。各区分の作業が終わったら、下の緑ボタンで「作業を記録する」を忘れずに。</p>
-
-        <div class="phase-cap">開店（9:20〜10:50）</div>
-        <div class="step"><span class="step-n t ph">9:20</span><span class="step-b"><b>開店の準備をはじめる</b><p>チェック画面を<span class="tag">開店</span>にして担当者を選ぶ。開錠・電気・空調・ケトルのプラグ。</p></span></div>
-        <div class="step"><span class="step-n t ph">9:30</span><span class="step-b"><b>炊飯・ドリンク準備</b><p>お米を炊く。スチーマー給水、ケトルで湯、茶碗・茶筅を洗う、タンブラーに水、ピンクダスター準備。</p></span></div>
-        <div class="step"><span class="step-n t ph">9:40</span><span class="step-b"><b>清掃</b><p>テーブル・椅子を拭く、トイレ掃除、掃除機。</p></span></div>
-        <div class="step"><span class="step-n t ph">9:50</span><span class="step-b"><b>おむすびをつくる</b></span></div>
-        <div class="step"><span class="step-n t ph">10:30</span><span class="step-b"><b>エスプレッソの品質を確認</b></span></div>
-        <div class="step"><span class="step-n t ph">10:40</span><span class="step-b"><b>照明・プロジェクター・音楽</b></span></div>
-        <div class="step alarm"><span class="step-n t">10:50</span><span class="step-b"><b>🔔 開店作業（アラームが鳴ります）</b><p>シャッターを開ける・A看板・おむすびサンプル・看板をOPEN。ここは全画面アラームでお知らせします。</p></span></div>
-        <div class="step"><span class="step-n">✓</span><span class="step-b"><b>開店を記録する</b><p>開店作業が終わったら緑ボタン →「記録する」。</p></span></div>
-
-        <div class="phase-cap">営業中（11:00〜20:00）</div>
-        <div class="step"><span class="step-n">切</span><span class="step-b"><b>「営業中」に切り替え、担当者を選ぶ</b></span></div>
-        <div class="step"><span class="step-n t ph">随時</span><span class="step-b"><b>商品棚の天板の埃・店前の掃き掃除</b></span></div>
-        <div class="step"><span class="step-n t ph">毎時</span><span class="step-b"><b>トイレ掃除・日報を送る</b></span></div>
-        <div class="step"><span class="step-n t ph">15:00</span><span class="step-b"><b>商品棚の整頓／翌々日分の具材切り出し</b></span></div>
-        <div class="step"><span class="step-n t ph">16:00</span><span class="step-b"><b>翌日分のおむすび準備・豚汁を煮込む</b></span></div>
-        <div class="step"><span class="step-n t ph">17:00</span><span class="step-b"><b>豚汁を煮込む</b></span></div>
-        <div class="step"><span class="step-n t ph">17:30</span><span class="step-b"><b>在庫（資材・飲食）を数える</b></span></div>
-        <div class="step"><span class="step-n t ph">19:30</span><span class="step-b"><b>商品在庫を数える</b></span></div>
-
-        <div class="phase-cap">閉店（19:30〜20:15）</div>
-        <div class="step"><span class="step-n">切</span><span class="step-b"><b>「閉店」に切り替え、担当者を選ぶ</b></span></div>
-        <div class="step"><span class="step-n t ph">19:30</span><span class="step-b"><b>フードの翌日準備</b><p>具材仕込み・豚汁5個を冷蔵・お米計量と浸水・冷凍。</p></span></div>
-        <div class="step"><span class="step-n t ph">19:50</span><span class="step-b"><b>店頭のサンプルを店内にしまう</b></span></div>
-        <div class="step alarm"><span class="step-n t">20:00</span><span class="step-b"><b>🔔 閉店作業（アラームが鳴ります）</b><p>看板CLOSE・A看板しまう・シャッター半分・消灯・音楽停止・器具洗い・エスプレッソ洗浄。ここも全画面アラームでお知らせします。</p></span></div>
-        <div class="step report"><span class="step-n t">20:15</span><span class="step-b"><b>報告して1日を終える</b><p>この順で報告まで完了させます：<br>① レジ締めを行う<br>② 日報を送る<br>③ 売れた商品・在庫を報告（ギフトボックス残5枚で報告）<br>④ 食品の期限と在庫を確認して報告<br>⑤ ゴミ袋を縛って所定の位置へ</p></span></div>
-        <div class="step"><span class="step-n">✓</span><span class="step-b"><b>閉店を記録して完了</b><p>すべての報告が終わったら緑ボタン →「記録する」。これで1日の記録が残ります。おつかれさまでした。</p></span></div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <button class="accord-hd" id="helpAlarmBtn">
+          <span style="font-size:14px;font-weight:700;letter-spacing:.08em;color:var(--ai)">🔔 アラームが鳴ったら</span>
+          <span class="accord-arrow" id="helpAlarmArrow">▼</span>
+        </button>
+        <div class="accord-body" id="helpAlarmBody" style="display:none">
+          <div class="step"><span class="step-n">1</span><span class="step-b"><b>全画面でやることが表示される</b><p>10:50（看板・シャッター）と20:00（閉店作業）の少し前に自動で出ます。</p></span></div>
+          <div class="step"><span class="step-n">2</span><span class="step-b"><b>その場でチェックできる</b><p>大きなボタンをタップして完了にしてから「完了・閉じる」で戻ります。</p></span></div>
+          <div class="step"><span class="step-n">3</span><span class="step-b"><b>音を出すには</b><p>右上の「🔕 音オフ」を1回タップして「🔔 音オン」にしてください。開店のたびに押してください。</p></span></div>
+          <div class="qa"><b>⚠ 画面を消すとアラームは鳴りません</b><p>レジ横で画面をつけたままにしておくのがおすすめです。設定 → 画面表示と明るさ → 自動ロック「しない」にしてください。大事な時刻はiPad標準の「時計」アプリでもアラームをセットしておくと安心です。</p></div>
+        </div>
       </div>
 
-      <div class="card">
-        <h3>アラームが鳴ったら</h3>
-        <p class="help-lead">看板出し・シャッターなど大事な時刻の少し前に、全画面でお知らせが出ます。</p>
-        <div class="step"><span class="step-n">1</span><span class="step-b"><b>やることが大きく表示されます</b><p>「シャッターを開ける」など、その時刻の作業が出ます。担当者が未選択のときはその場で選べます。</p></span></div>
-        <div class="step"><span class="step-n">2</span><span class="step-b"><b>その場でチェックできます</b><p>大きなボタンをタップすると、通常のチェックと同じように記録されます。</p></span></div>
-        <div class="step"><span class="step-n">3</span><span class="step-b"><b>「完了・閉じる」でもとの画面へ</b><p>まだ作業できないときは「5分後にもう一度」。閉じても、指定時刻ちょうどにもう一度鳴ります。</p></span></div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <button class="accord-hd" id="helpFlowBtn">
+          <span style="font-size:14px;font-weight:700;letter-spacing:.08em;color:var(--ai)">📅 1日の流れ</span>
+          <span class="accord-arrow" id="helpFlowArrow">▼</span>
+        </button>
+        <div class="accord-body" id="helpFlowBody" style="display:none">
+          <div class="phase-cap">開店（9:20〜10:50）</div>
+          <div class="step"><span class="step-n t ph">9:20</span><span class="step-b"><b>開店タブ・担当者を確認</b><p>開錠・電気・空調・ケトル。</p></span></div>
+          <div class="step"><span class="step-n t ph">9:30〜</span><span class="step-b"><b>炊飯・ドリンク・清掃・おむすび</b></span></div>
+          <div class="step alarm"><span class="step-n t">10:50</span><span class="step-b"><b>🔔 アラーム：シャッター・看板OPEN</b></span></div>
+          <div class="step"><span class="step-n">✓</span><span class="step-b"><b>開店を記録する</b></span></div>
+          <div class="phase-cap">営業中・閉店</div>
+          <div class="step"><span class="step-n">切</span><span class="step-b"><b>営業中タブに切り替え</b><p>毎時トイレ・日報。15:00〜棚整頓・仕込み。</p></span></div>
+          <div class="step alarm"><span class="step-n t">20:00</span><span class="step-b"><b>🔔 アラーム：閉店作業</b></span></div>
+          <div class="step report"><span class="step-n t">20:15</span><span class="step-b"><b>報告完了 → 閉店を記録する</b><p>① レジ締め ② 日報 ③ 商品・在庫報告 ④ 食品期限報告 ⑤ ゴミ</p></span></div>
+        </div>
       </div>
 
-      <div class="card">
-        <h3>履歴・集計の見かた</h3>
-        <div class="step"><span class="step-n">履</span><span class="step-b"><b>履歴</b><p>日ごとの記録が見られます。タップで開くと、1項目ごとに「実施した人・時刻」または赤字の「未実施」が確認できます。</p></span></div>
-        <div class="step"><span class="step-n">集</span><span class="step-b"><b>集計</b><p>週次／月次で対応率が出ます。担当者ごと・区分ごと・日ごとの数字と「抜けやすい項目」も確認できます。「PDFで保存」でレポートを出せます。</p></span></div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <button class="accord-hd" id="helpQaBtn">
+          <span style="font-size:14px;font-weight:700;letter-spacing:.08em;color:var(--ai)">❓ こんなときは</span>
+          <span class="accord-arrow" id="helpQaArrow">▼</span>
+        </button>
+        <div class="accord-body" id="helpQaBody" style="display:none">
+          <div class="qa"><b>担当者が自動でセットされない</b><p>設定 → スタッフ → 「シフトから自動取得」でシフト表の名前を登録してください。シフト表の名前と完全一致している必要があります。</p></div>
+          <div class="qa"><b>チェックが取り消せない</b><p>記録を確定したあとは「記録をやり直す」から戻してください。確定前なら項目を再タップで取り消せます。</p></div>
+          <div class="qa"><b>履歴・集計を見たい</b><p>上のタブから「履歴」「集計」を選んでください。集計はPDFで保存できます。</p></div>
+        </div>
       </div>
 
-      <div class="card">
-        <h3>設定を変える（アラーム・作業内容）</h3>
-        <p class="help-lead">「設定」タブから、いつでも変更できます。変更はすぐ保存され、チェック画面にも反映されます。</p>
-        <div class="step"><span class="step-n">⏰</span><span class="step-b"><b>アラームを鳴らす時刻を変える</b><p>設定タブ →「アラーム」。時刻ごとに「オン／オフ」を切り替えられます。オンにした時刻は<span class="tag">マスト</span>表示になり、その時刻に未実施があると全画面で鳴ります。<br>（初期設定：10:50 と 20:00 がオン）</p></span></div>
-        <div class="step"><span class="step-n">⏱</span><span class="step-b"><b>「何分前に鳴らすか」を変える</b><p>設定タブ →「アラーム」→「何分前に鳴らすか」。時刻ちょうど〜15分前から選べます。（初期設定：5分前）</p></span></div>
-        <div class="step"><span class="step-n">✎</span><span class="step-b"><b>作業内容を変える・追加する</b><p>設定タブ →「作業項目」→ 開店／営業中／閉店を選ぶ。<br>・時刻や内容は、その場で文字を書き換えれば変更できます<br>・いらない項目は「削除」<br>・いちばん下の欄に「時刻・区分・内容」を入れて「追加」で新しい項目を足せます</p></span></div>
-        <div class="step"><span class="step-n">👤</span><span class="step-b"><b>スタッフを変える</b><p>設定タブ →「スタッフ」。名前の書き換え・削除・追加ができます。</p></span></div>
-        <div class="qa" style="margin-top:8px"><b>ヒント：アラームの「内容」＝その時刻の作業そのもの</b><p>アラームで表示される文章は、その時刻に登録されている作業項目です。文言を変えたいときは「作業項目」で該当の項目を書き換えれば、アラームの表示もそのまま変わります。</p></div>
-      </div>
-
-      <div class="card">
-        <h3>こんなときは</h3>
-        <div class="qa"><b>Q. アラームが鳴らない</b><p>右上が「🔔 音オン」になっているか確認してください。また、アプリを開いている間だけ鳴ります。画面を消す・別アプリに切り替えると鳴りません。確実に鳴らしたい時刻は、iPad標準の「時計」アプリでもアラームをセットしておくと安心です。</p></div>
-        <div class="qa"><b>Q. 画面が勝手に暗くなる</b><p>設定 → 画面表示と明るさ → 自動ロックを「しない」にして、レジ横で開きっぱなしにするのがおすすめです。</p></div>
-        <div class="qa"><b>Q. 押し間違えて記録してしまった</b><p>もう一度その項目をタップすれば取り消せます。記録を確定したあとも「記録をやり直す」から戻せます。</p></div>
-        <div class="qa"><b>Q. 担当者やアラームの時刻を変えたい</b><p>「設定」タブから、スタッフの追加・削除、作業項目の追加・削除、アラームを鳴らす時刻の変更ができます。</p></div>
-        <div class="qa"><b>Q. 記録はどこに残る？</b><p>このiPadの中に保存されます。複数台で使うと台ごとに履歴が分かれます。集計をまとめたいときは設定タブの「書き出す（CSV）」を使ってください。</p></div>
-      </div>
     </div>
   </div>
 
@@ -838,6 +854,8 @@
 
       var days = Object.keys(shiftCache).length;
       if (statusEl) statusEl.textContent = "✓ 最終取得：" + today() + "（" + days + "日分）";
+      var badge = document.getElementById("shiftStatusBadge");
+      if (badge) badge.textContent = "✓ " + today() + " 取得済";
       if (!silent) { toast("シフトを読み込みました。"); renderCheck(); }
       else renderCheck();
     } catch (e) {
@@ -1607,6 +1625,30 @@
     document.getElementById("pdfBtn").onclick = makePDF;
     document.getElementById("printBtn").onclick = doPrint;
 
+    // アコーディオン（シフト連携・スタッフ・作業項目・アラーム・データ・使い方）
+    function toggleAccord(bodyId, arrowId) {
+      var body = document.getElementById(bodyId);
+      var arrow = document.getElementById(arrowId);
+      if (!body) return;
+      var isOpen = body.style.display !== "none";
+      body.style.display = isOpen ? "none" : "block";
+      if (arrow) arrow.classList.toggle("open", !isOpen);
+    }
+    [
+      ["shiftAccordBtn",  "shiftAccordBody",  "shiftArrow"],
+      ["staffAccordBtn",  "staffAccordBody",  "staffArrow"],
+      ["taskAccordBtn",   "taskAccordBody",   "taskArrow"],
+      ["alarmAccordBtn",  "alarmAccordBody",  "alarmArrow"],
+      ["dataAccordBtn",   "dataAccordBody",   "dataArrow"],
+      ["helpBasicBtn",    "helpBasicBody",    "helpBasicArrow"],
+      ["helpAlarmBtn",    "helpAlarmBody",    "helpAlarmArrow"],
+      ["helpFlowBtn",     "helpFlowBody",     "helpFlowArrow"],
+      ["helpQaBtn",       "helpQaBody",       "helpQaArrow"]
+    ].forEach(function(a) {
+      var btn = document.getElementById(a[0]);
+      if (btn) btn.onclick = function() { toggleAccord(a[1], a[2]); };
+    });
+
     Array.prototype.forEach.call(document.querySelectorAll("#cfgSeg button"), function (b) {
       b.onclick = function () {
         S.cfgPhase = b.dataset.ph;
@@ -1619,6 +1661,45 @@
       cfg.staff.push({ id: "s" + Date.now(), name: v });
       document.getElementById("newStaff").value = "";
       saveCfg(); renderCfg(); renderCheck();
+    };
+
+    // シフトからスタッフ自動取得
+    function isValidStaffName(n) {
+      if (!n || n.length < 2 || n.length > 8) return false;  // 2〜8文字
+      if (/^\d/.test(n)) return false;                         // 数字始まりは除外
+      if (/[a-zA-Z]{3,}/.test(n)) return false;               // 英字3文字以上は除外
+      if (/[\s　]/.test(n)) return false;                      // スペース含むものは除外（説明文）
+      // ひらがな・カタカナ・漢字・数字・記号が含まれる
+      if (!/[぀-ヿ一-鿿]/.test(n)) return false; // 日本語文字が含まれない
+      // よくあるイベント・業務名を除外
+      var excludeWords = ["アワード","SPARK","WS","NCS","BS","IT","SU","NBA","販売","講演","交流","卒業","特別","ベーシック","勤務","時間","セル数","合計"];
+      for (var i = 0; i < excludeWords.length; i++) {
+        if (n.indexOf(excludeWords[i]) >= 0) return false;
+      }
+      return true;
+    }
+    document.getElementById("staffFromShiftBtn").onclick = function() {
+      var names = {};
+      var cutoff = "2026-07-01"; // 7月以降のみ
+      Object.keys(shiftCache).forEach(function(d) {
+        if (d < cutoff) return;
+        var day = shiftCache[d];
+        (day.slots || []).forEach(function(sl) {
+          (sl.names || []).forEach(function(n) {
+            if (isValidStaffName(n)) names[n] = 1;
+          });
+        });
+      });
+      var newNames = Object.keys(names).filter(function(n) {
+        return !cfg.staff.some(function(s) { return normName(s.name) === normName(n); });
+      });
+      if (!newNames.length) { toast("新しいスタッフはいませんでした。"); return; }
+      // 確認ダイアログ
+      var msg = "以下のスタッフを追加しますか？\n\n" + newNames.join("・");
+      if (!confirm(msg)) return;
+      newNames.forEach(function(n) { cfg.staff.push({ id: "s" + Date.now() + Math.random(), name: n }); });
+      saveCfg(); renderCfg(); renderCheck();
+      toast(newNames.join("・") + " を追加しました。");
     };
     document.getElementById("addTask").onclick = function () {
       var tm = document.getElementById("ntTime").value.trim(), ti = document.getElementById("ntTitle").value.trim();
