@@ -600,100 +600,24 @@
 <div id="toast"></div>
 <div id="report"></div>
 
-<!-- Firebase（複数端末リアルタイム同期用） -->
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
-
 <script>
 (function () {
   "use strict";
 
-  /* ============ storage（Firebase Realtime Database） ============ */
-  /* 複数iPadでチェック記録・履歴・集計をリアルタイム共有するため、
-     localStorageではなくFirebase Realtime Databaseに保存する。
-     オフライン時やFirebase未接続時はlocalStorage/メモリにフォールバックする。 */
-  var firebaseConfig = {
-    apiKey: "AIzaSyC3nzePQdI2U6HoByU7DsyXytgMd89F1B8",
-    authDomain: "musubi-ops.firebaseapp.com",
-    databaseURL: "https://musubi-ops-default-rtdb.firebaseio.com",
-    projectId: "musubi-ops",
-    storageBucket: "musubi-ops.firebasestorage.app",
-    messagingSenderId: "510290175391",
-    appId: "1:510290175391:web:4f1d7c978a8d344fc409aa"
-  };
-  var hasFirebase = typeof firebase !== "undefined";
-  var fbDb = null, fbAuth = null, authReady = Promise.resolve(null);
-  if (hasFirebase) {
-    firebase.initializeApp(firebaseConfig);
-    fbDb = firebase.database();
-    fbAuth = firebase.auth();
-    authReady = new Promise(function (resolve) {
-      var settled = false;
-      fbAuth.onAuthStateChanged(function (user) {
-        if (user && !settled) { settled = true; resolve(user); }
-      });
-      fbAuth.signInAnonymously().catch(function () {
-        toast("サーバーへの接続に失敗しました。通信環境を確認してください。");
-        if (!settled) { settled = true; resolve(null); }
-      });
-    });
-  }
-
+  /* ============ storage ============ */
+  /* 優先: window.storage（Claude内） → localStorage（PWA・通常のブラウザ） → メモリのみ */
   var mem = {};
+  var hasStore = typeof window.storage !== "undefined" && window.storage;
   var hasLS = (function () { try { localStorage.setItem("__t", "1"); localStorage.removeItem("__t"); return true; } catch (e) { return false; } })();
-
-  function dbPath(k) { return "data/" + String(k).replace(/[.#$\[\]]/g, "_"); }
-
   async function sGet(k) {
-    if (hasFirebase) {
-      try {
-        await authReady;
-        var snap = await fbDb.ref(dbPath(k)).once("value");
-        var v = snap.val();
-        if (v !== null && v !== undefined) return v;
-      } catch (e) { /* オフライン等はローカルにフォールバック */ }
-    }
-    if (hasLS) { var v2 = localStorage.getItem(k); return v2 === null ? null : v2; }
+    if (hasStore) { try { var r = await window.storage.get(k, true); return r ? r.value : null; } catch (e) { return null; } }
+    if (hasLS) { var v = localStorage.getItem(k); return v === null ? null : v; }
     return mem[k] === undefined ? null : mem[k];
   }
   async function sSet(k, v) {
-    if (hasLS) { try { localStorage.setItem(k, v); } catch (e) {} } else { mem[k] = v; }
-    if (hasFirebase) {
-      try { await authReady; await fbDb.ref(dbPath(k)).set(v); }
-      catch (e) { toast("保存できませんでした。通信を確認してください。"); }
-      return;
-    }
-    if (!hasLS) mem[k] = v;
-  }
-
-  /* ============ リアルタイム同期（他端末の変更を購読） ============ */
-  var monthWatchers = {};
-  function watchMonth(m, onRemote) {
-    if (!hasFirebase || monthWatchers[m]) return;
-    monthWatchers[m] = true;
-    authReady.then(function () {
-      fbDb.ref(dbPath("ops:rec:" + m)).on("value", function (snap) {
-        var raw = snap.val();
-        var obj = {};
-        if (raw) { try { obj = JSON.parse(raw); } catch (e) { obj = {}; } }
-        months[m] = obj;
-        onRemote(m);
-      });
-    });
-  }
-  function watchConfig(onRemote) {
-    if (!hasFirebase) return;
-    authReady.then(function () {
-      fbDb.ref(dbPath("ops:config:v1")).on("value", function (snap) {
-        var raw = snap.val();
-        if (!raw) return;
-        try { cfg = JSON.parse(raw); } catch (e) { return; }
-        if (!cfg.alarm) cfg.alarm = { lead: 5, slots: { "10:50": true, "20:00": true } };
-        if (!cfg.alarm.slots) cfg.alarm.slots = {};
-        onRemote();
-      });
-    });
+    if (hasStore) { try { await window.storage.set(k, v, true); } catch (e) { toast("保存できませんでした。通信を確認してください。"); } return; }
+    if (hasLS) { try { localStorage.setItem(k, v); } catch (e) { toast("保存容量がいっぱいです。古い記録を書き出して整理してください。"); } return; }
+    mem[k] = v;
   }
 
   /* ============ defaults ============ */
@@ -775,7 +699,7 @@
     var n = 0;
     return {
       alarm: { lead: 5, slots: { "10:50": true, "20:00": true } },
-      staff: ["さよみん", "はーふ", "まどか", "ぐっちゃん", "はやみー"].map(function (s, i) { return { id: "s" + (i + 1), name: s }; }),
+      staff: ["はやみー", "ぽりん", "アルソック", "しん", "さんペー", "陽弥呼", "ちり", "はや松", "かなで", "プンミ"].map(function (s, i) { return { id: "s" + (i + 1), name: s }; }),
       tasks: DEF_TASKS.map(function (t) {
         n++; return { id: "t" + n, phase: t[0], time: t[1], cat: t[2], title: t[3], note: t[4] };
       })
@@ -798,19 +722,12 @@
   function staffName(id) { var s = cfg.staff.filter(function (x) { return x.id === id; })[0]; return s ? s.name : "未設定"; }
   function hm(isoStr) { var d = new Date(isoStr); return p2(d.getHours()) + ":" + p2(d.getMinutes()); }
 
-  function onMonthRemoteChange(m) {
-    if (S.tab === "check" && mk(S.date) === m) renderCheck();
-    else if (S.tab === "hist") renderHist();
-    else if (S.tab === "stat") renderStat();
-  }
   async function loadMonth(m) {
-    if (months[m]) { watchMonth(m, onMonthRemoteChange); return months[m]; }
+    if (months[m]) return months[m];
     var raw = await sGet("ops:rec:" + m);
     var obj = {};
     if (raw) { try { obj = JSON.parse(raw); } catch (e) { obj = {}; } }
-    months[m] = obj;
-    watchMonth(m, onMonthRemoteChange);
-    return obj;
+    months[m] = obj; return obj;
   }
   var saveTimer = {};
   function saveMonth(m) {
@@ -945,12 +862,15 @@
     }
   }
 
+  // デフォルトのシフトURL（設定済み・変更不要）
+  var DEFAULT_SHIFT_URL = "https://script.google.com/macros/s/AKfycbzH8Wxv-sX5VTTZnmkpzMaGGZQseaM_wper2XnltjSWMl9AsSnjHtnPVcrCI8Vuo3qKow/exec";
+
   async function loadShiftCache() {
     var cached = await sGet("shift:cache");
     if (cached) { try { shiftCache = JSON.parse(cached); } catch(e) {} }
 
-    var url = await sGet("shift:url");
-    if (!url) return;
+    // 保存済みURLがなければデフォルトを使う
+    var url = await sGet("shift:url") || DEFAULT_SHIFT_URL;
 
     var inp = document.getElementById("shiftUrlInp");
     if (inp) inp.value = url;
@@ -1665,8 +1585,7 @@
     if (!cfg || !cfg.tasks || !cfg.tasks.length) { cfg = defaultConfig(); await sSet("ops:config:v1", JSON.stringify(cfg)); }
     if (!cfg.alarm) { cfg.alarm = { lead: 5, slots: { "10:50": true, "20:00": true } }; await sSet("ops:config:v1", JSON.stringify(cfg)); }
     if (!cfg.alarm.slots) cfg.alarm.slots = {};
-    if (!hasFirebase && !hasLS) toast("この端末では記録が保存されません。通常のブラウザで開き直してください。");
-    watchConfig(function () { renderCheck(); renderNextUp(); if (typeof renderCfg === "function") { try { renderCfg(); } catch (e) {} } });
+    if (!hasStore && !hasLS) toast("この端末では記録が保存されません。通常のブラウザで開き直してください。");
 
     document.getElementById("dateSel").value = S.date;
     document.getElementById("histMonth").value = mk(S.date);
