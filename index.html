@@ -11,6 +11,8 @@
 <link rel="icon" href="./icon-192.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
 
 <style>
   *, *::before, *::after { box-sizing: border-box; }
@@ -621,6 +623,90 @@
     mem[k] = v;
   }
 
+  /* ============ Firebase Realtime Database ============ */
+  /* /checklists/{YYYY-MM-DD}/{phase}/{taskId}: {checked,by,at}
+     /checklists/{YYYY-MM-DD}/{phase}/_meta:    {assignAll,assignManual,note,done} */
+  var firebaseConfig = {
+    apiKey: "AIzaSyC3nzePQdI2U6HoByU7DsyXytgMd89F1B8",
+    authDomain: "musubi-ops.firebaseapp.com",
+    databaseURL: "https://musubi-ops-default-rtdb.firebaseio.com",
+    projectId: "musubi-ops",
+    storageBucket: "musubi-ops.firebasestorage.app",
+    messagingSenderId: "510290175391",
+    appId: "1:510290175391:web:4f1d7c978a8d344fc409aa"
+  };
+  firebase.initializeApp(firebaseConfig);
+  var db = firebase.database();
+
+  function ckRef(dateStr, ph, taskId) { return db.ref("checklists/" + dateStr + "/" + ph + "/" + taskId); }
+  function metaRef(dateStr, ph) { return db.ref("checklists/" + dateStr + "/" + ph + "/_meta"); }
+
+  function sessionFromFB(dateStr, ph, node) {
+    var s = { date: dateStr, phase: ph, assign: {}, assignManual: false, checks: {}, note: "", done: null };
+    if (!node) return s;
+    var meta = node._meta || {};
+    if (meta.assignAll) s.assign.all = meta.assignAll;
+    s.assignManual = !!meta.assignManual;
+    s.note = meta.note || "";
+    s.done = meta.done || null;
+    for (var taskId in node) {
+      if (taskId === "_meta") continue;
+      var t = node[taskId];
+      if (t && t.checked) s.checks[taskId] = { by: t.by, at: t.at };
+    }
+    return s;
+  }
+
+  var fbListeners = {}; // dateStr -> { ref, handler }
+  function attachDateListener(dateStr) {
+    if (fbListeners[dateStr]) return;
+    var ref = db.ref("checklists/" + dateStr);
+    var handler = function (snap) {
+      var val = snap.val() || {};
+      var m = months[mk(dateStr)] || (months[mk(dateStr)] = {});
+      ["open", "mid", "close"].forEach(function (ph) {
+        m[dateStr + "|" + ph] = sessionFromFB(dateStr, ph, val[ph]);
+      });
+      if (S.tab === "check") renderCheck();
+      renderNextUp();
+      checkAlarm();
+      if (ringing) renderAlarm();
+    };
+    ref.on("value", handler, function () {
+      toast("Firebaseへの接続に失敗しました。通信環境を確認してください。");
+    });
+    fbListeners[dateStr] = { ref: ref, handler: handler };
+  }
+  function detachDateListener(dateStr) {
+    var L = fbListeners[dateStr];
+    if (L) { L.ref.off("value", L.handler); delete fbListeners[dateStr]; }
+  }
+  var viewingDate = null;
+  function setViewDate(dateStr) {
+    if (viewingDate && viewingDate !== today() && viewingDate !== dateStr) detachDateListener(viewingDate);
+    viewingDate = dateStr;
+    attachDateListener(dateStr);
+  }
+
+  async function loadRange(a, b) {
+    var snap = await db.ref("checklists").orderByKey().startAt(a).endAt(b).once("value");
+    var val = snap.val() || {};
+    var out = [];
+    Object.keys(val).sort().forEach(function (dateStr) {
+      var m = mk(dateStr);
+      months[m] = months[m] || {};
+      ["open", "mid", "close"].forEach(function (ph) {
+        var node = val[dateStr][ph];
+        if (node) {
+          var s = sessionFromFB(dateStr, ph, node);
+          months[m][dateStr + "|" + ph] = s;
+          out.push(s);
+        }
+      });
+    });
+    return out;
+  }
+
   /* ============ defaults ============ */
   var TOILET = "紙は三角折り／ハンドペーパー補充／ゴミ箱・サニタリーボックスを空に";
   var DEF_TASKS = [
@@ -723,24 +809,13 @@
   function staffName(id) { var s = cfg.staff.filter(function (x) { return x.id === id; })[0]; return s ? s.name : "未設定"; }
   function hm(isoStr) { var d = new Date(isoStr); return p2(d.getHours()) + ":" + p2(d.getMinutes()); }
 
-  async function loadMonth(m) {
-    if (months[m]) return months[m];
-    var raw = await sGet("ops:rec:" + m);
-    var obj = {};
-    if (raw) { try { obj = JSON.parse(raw); } catch (e) { obj = {}; } }
-    months[m] = obj; return obj;
-  }
-  var saveTimer = {};
-  function saveMonth(m) {
-    clearTimeout(saveTimer[m]);
-    saveTimer[m] = setTimeout(function () { sSet("ops:rec:" + m, JSON.stringify(months[m])); }, 400);
-  }
   function session(dateStr, ph, create) {
-    var m = months[mk(dateStr)]; if (!m) return null;
+    var m = months[mk(dateStr)] || (months[mk(dateStr)] = {});
     var key = dateStr + "|" + ph;
-    if (!m[key] && create) m[key] = { date: dateStr, phase: ph, assign: {}, checks: {}, note: "", done: null };
+    if (!m[key] && create) m[key] = { date: dateStr, phase: ph, assign: {}, assignManual: false, checks: {}, note: "", done: null };
     return m[key] || null;
   }
+  function monthLastDay(m) { var y = +m.slice(0, 4), mo = +m.slice(5); return iso(new Date(y, mo, 0)); }
   /* ============ time helpers ============ */
   function parseHM(s) {
     var m = /^(\d{1,2})\s*[:：]\s*(\d{2})$/.exec(String(s).trim());
@@ -928,10 +1003,8 @@
       var s0 = session(S.date, S.phase, false);
       var manuallySet = s0 && s0.assignManual;
       if (!manuallySet) {
-        var s = session(S.date, S.phase, true);
-        s.assign.all = shiftId;
+        metaRef(S.date, S.phase).update({ assignAll: shiftId });
         who = shiftId;
-        saveMonth(mk(S.date));
       }
     }
 
@@ -947,10 +1020,7 @@
         '</div>' +
       '</div>';
     document.getElementById("assignSel").onchange = function () {
-      var s = session(S.date, S.phase, true);
-      s.assign.all = this.value;
-      s.assignManual = true; // 手動変更フラグ：自動上書きを防ぐ
-      saveMonth(mk(S.date));
+      metaRef(S.date, S.phase).update({ assignAll: this.value, assignManual: true }); // 手動変更フラグ：自動上書きを防ぐ
     };
 
     // 休業日チェック
@@ -1024,21 +1094,20 @@
   }
 
   function toggle(taskId) {
-    var s = session(S.date, S.phase, true);
-    if (s.checks[taskId]) { delete s.checks[taskId]; }
-    else {
+    var s = session(S.date, S.phase, false) || { checks: {}, assign: {} };
+    if (s.checks[taskId]) {
+      ckRef(S.date, S.phase, taskId).remove();
+    } else {
       var by = whoOf(s);
       if (!by) { toast("本日の担当者を選んでからチェックしてください。"); return; }
-      s.checks[taskId] = { by: by, at: new Date().toISOString() };
+      ckRef(S.date, S.phase, taskId).set({ checked: true, by: by, at: new Date().toISOString() });
     }
-    saveMonth(mk(S.date));
-    renderCheck();
   }
 
   /* ============ render: history ============ */
   async function renderHist() {
     var m = document.getElementById("histMonth").value || mk(S.date);
-    await loadMonth(m);
+    await loadRange(m + "-01", monthLastDay(m));
     var ph = document.getElementById("histPhase").value;
     var keys = Object.keys(months[m] || {}).filter(function (k) { return !ph || months[m][k].phase === ph; });
     keys.sort().reverse();
@@ -1092,16 +1161,7 @@
   }
 
   async function collect(a, b) {
-    var need = {}, d = new Date(a + "T00:00:00"), end = new Date(b + "T00:00:00");
-    while (d <= end) { need[mk(iso(d))] = 1; d.setDate(d.getDate() + 1); }
-    for (var k in need) await loadMonth(k);
-    var out = [];
-    for (var k2 in need) {
-      var mm = months[k2] || {};
-      for (var kk in mm) if (mm[kk].date >= a && mm[kk].date <= b) out.push(mm[kk]);
-    }
-    out.sort(function (x, y) { return x.date < y.date ? -1 : x.date > y.date ? 1 : 0; });
-    return out;
+    return loadRange(a, b);
   }
 
   function aggregate(sessions) {
@@ -1433,7 +1493,7 @@
       '<div class="alarm-pick"><span>担当者</span><select class="inp" id="alWho"><option value="">— 選択 —</option>' +
       cfg.staff.map(function (s) { return '<option value="' + s.id + '">' + esc(s.name) + "</option>"; }).join("") + "</select></div>";
     if (!who) document.getElementById("alWho").onchange = function () {
-      var s = session(today(), sl.phase, true); s.assign.all = this.value; saveMonth(mk(today())); renderAlarm(); renderCheck();
+      metaRef(today(), sl.phase).update({ assignAll: this.value });
     };
 
     document.getElementById("alList").innerHTML = items.map(function (t) {
@@ -1593,7 +1653,8 @@
     document.getElementById("monthSel").value = mk(S.date);
     document.getElementById("weekSel").value = isoWeek(new Date());
 
-    await loadMonth(mk(S.date));
+    attachDateListener(today());
+    setViewDate(S.date);
     renderCheck();
 
     Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (t) { t.onclick = function () { go(t.dataset.tab); }; });
@@ -1608,8 +1669,10 @@
     document.getElementById("dpCfgBack").onclick = function() { closeDrawerPanel("cfg"); };
     document.getElementById("dpHelpBack").onclick = function() { closeDrawerPanel("help"); };
 
-    document.getElementById("dateSel").onchange = async function () {
-      S.date = this.value || today(); await loadMonth(mk(S.date)); renderCheck();
+    document.getElementById("dateSel").onchange = function () {
+      S.date = this.value || today();
+      setViewDate(S.date);
+      renderCheck();
     };
     Array.prototype.forEach.call(document.querySelectorAll("#phaseSeg button"), function (b) {
       b.onclick = function () {
@@ -1619,20 +1682,22 @@
       };
     });
     document.getElementById("noteBox").onchange = function () {
-      var s = session(S.date, S.phase, true); s.note = this.value; saveMonth(mk(S.date));
+      metaRef(S.date, S.phase).update({ note: this.value });
     };
     document.getElementById("finishBtn").onclick = openConfirm;
     document.getElementById("cfNo").onclick = closeConfirm;
     document.getElementById("confirm").onclick = function (e) { if (e.target === this) closeConfirm(); };
     document.getElementById("cfYes").onclick = function () {
-      var s = session(S.date, S.phase, true);
-      if (s.done) { s.done = null; toast("記録を取り消しました。続けて編集できます。"); }
-      else {
+      var s = session(S.date, S.phase, false) || { checks: {} };
+      if (s.done) {
+        metaRef(S.date, S.phase).update({ done: null });
+        toast("記録を取り消しました。続けて編集できます。");
+      } else {
         var st = tally(s);
-        s.done = new Date().toISOString();
+        metaRef(S.date, S.phase).update({ done: new Date().toISOString() });
         toast("記録しました（対応率 " + pct(st.ok, st.tot) + "%）");
       }
-      saveMonth(mk(S.date)); closeConfirm(); renderCheck();
+      closeConfirm();
     };
 
     document.getElementById("histMonth").onchange = renderHist;
@@ -1788,10 +1853,7 @@
       var shiftId = getShiftStaffId(S.date, S.phase);
       var currentWho = whoOf(sess);
       if (shiftId && shiftId !== currentWho) {
-        var s = session(S.date, S.phase, true);
-        s.assign.all = shiftId;
-        saveMonth(mk(S.date));
-        renderCheck();
+        metaRef(S.date, S.phase).update({ assignAll: shiftId });
         toast("担当者が「" + staffName(shiftId) + "」に自動で切り替わりました。");
       }
     }, 30 * 1000);
